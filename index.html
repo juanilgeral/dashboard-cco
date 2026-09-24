@@ -28,8 +28,9 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .c-cyan{color:var(--cyan)}.c-lime{color:var(--lime)}.c-amber{color:var(--amber)}.c-red{color:var(--red)}.c-violet{color:var(--violet)}
 .grid{flex:1;min-height:0;display:grid;grid-template-columns:1.4fr .6fr;gap:12px}
 .panel{min-height:0;display:flex;flex-direction:column;background:rgba(8,14,24,.9);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.scroll{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .panel h3{font-family:Orbitron,sans-serif;font-size:clamp(.78rem,1.05vw,.95rem);letter-spacing:.14em;color:var(--cyan);padding:10px 12px;border-bottom:1px solid var(--line)}
-.scroll,.feed{flex:1;min-height:0;overflow:hidden;position:relative}
+.feed{flex:1;min-height:0;overflow:hidden;position:relative}
 .feed-track{display:block;animation:feedUp 36s linear infinite}
 .feed:hover .feed-track{animation-play-state:paused}
 @keyframes feedUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
