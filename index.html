@@ -2,261 +2,141 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#05070d; --panel:#0b1220; --line:rgba(0,229,255,.18);
-  --cyan:#00e5ff; --lime:#b8ff3d; --amber:#ffb020; --red:#ff3b5c;
-  --violet:#9b6bff; --muted:#7d8ba3; --text:#e8f4ff;
-}
+:root{--bg:#05070d;--line:rgba(0,229,255,.18);--cyan:#00e5ff;--lime:#b8ff3d;--amber:#ffb020;--red:#ff3b5c;--violet:#9b6bff;--muted:#8a97ad;--text:#e8f4ff}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:Rajdhani,system-ui,sans-serif}
-body{
-  background:
-    radial-gradient(900px 400px at 10% -10%, rgba(0,229,255,.12), transparent 50%),
-    radial-gradient(700px 380px at 110% 0%, rgba(155,107,255,.10), transparent 46%),
-    linear-gradient(180deg,#070b14 0%,#05070d 100%);
+html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:Rajdhani,system-ui,sans-serif}
+body{background:radial-gradient(900px 400px at 8% -12%,rgba(0,229,255,.12),transparent 50%),#05070d}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.07;background-image:linear-gradient(rgba(0,229,255,.35) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.35) 1px,transparent 1px);background-size:52px 52px}
+.wrap{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;padding:12px 16px 0;gap:10px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand b{font-family:Orbitron,sans-serif;font-size:clamp(1.25rem,2.2vw,1.85rem);letter-spacing:.12em;color:var(--cyan);text-shadow:0 0 18px rgba(0,229,255,.45)}
+.brand span{display:block;color:var(--muted);font-size:clamp(.78rem,1.1vw,.98rem);letter-spacing:.16em;text-transform:uppercase}
+.clock{font-family:"Share Tech Mono",monospace;font-size:clamp(1.6rem,3vw,2.35rem);color:var(--lime);text-align:right}
+.sub{color:var(--muted);font-size:clamp(.72rem,1vw,.88rem);text-align:right}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.kpi{background:rgba(8,14,24,.92);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.kpi .l{font-size:clamp(.68rem,.95vw,.82rem);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.kpi .n{font-family:Orbitron,sans-serif;font-size:clamp(1.45rem,2.6vw,2.05rem)}
+.c-cyan{color:var(--cyan)}.c-lime{color:var(--lime)}.c-amber{color:var(--amber)}.c-red{color:var(--red)}.c-violet{color:var(--violet)}
+.grid{flex:1;min-height:0;display:grid;grid-template-columns:1.4fr .6fr;gap:12px}
+.panel{min-height:0;display:flex;flex-direction:column;background:rgba(8,14,24,.9);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.panel h3{font-family:Orbitron,sans-serif;font-size:clamp(.68rem,.95vw,.82rem);letter-spacing:.14em;color:var(--cyan);padding:10px 12px;border-bottom:1px solid var(--line)}
+.scroll,.feed{flex:1;min-height:0;overflow:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:clamp(.92rem,1.25vw,1.08rem)}
+.tbl th{text-align:left;font-size:.72rem;letter-spacing:.12em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0b1220}
+.tbl td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04)}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:700}
+.p-tl{background:rgba(0,229,255,.15);color:var(--cyan)}.p-ls{background:rgba(255,176,32,.16);color:var(--amber)}.p-cv{background:rgba(155,107,255,.18);color:var(--violet)}.p-ht{background:rgba(184,255,61,.14);color:var(--lime)}
+.p-ok{background:rgba(184,255,61,.14);color:var(--lime)}.p-run{background:rgba(0,229,255,.14);color:var(--cyan)}.p-loja{background:rgba(255,176,32,.16);color:var(--amber)}.p-off{background:rgba(255,59,92,.16);color:var(--red)}
+.ev{display:grid;grid-template-columns:78px 1fr;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:clamp(.9rem,1.15vw,1.02rem)}
+.ev time{font-family:"Share Tech Mono",monospace;color:var(--cyan)}.ev small{color:var(--muted)}
+.e-bau b{color:var(--amber)}.e-fim b{color:var(--red)}.e-ini b{color:var(--lime)}.e-ret b{color:var(--violet)}.e-cli b{color:var(--cyan)}
+.ticker{flex:0 0 44px;display:flex;align-items:center;overflow:hidden;border-top:1px solid var(--line);background:rgba(0,20,32,.95)}
+.ticker-track{display:flex;white-space:nowrap;animation:slide 42s linear infinite}
+.ticker-track:hover{animation-play-state:paused}
+.tick{display:inline-flex;align-items:center;gap:10px;padding:0 28px;font-size:clamp(.92rem,1.2vw,1.08rem)}
+.tick time{font-family:"Share Tech Mono",monospace;color:var(--cyan)}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+@media (orientation:portrait),(max-width:900px){
+  html,body{overflow:auto}
+  .wrap{height:auto;min-height:100%}
+  .kpis{grid-template-columns:repeat(3,1fr)}
+  .grid{grid-template-columns:1fr}
+  .panel{min-height:42vh}
 }
-body::before{
-  content:"";position:fixed;inset:0;pointer-events:none;opacity:.08;
-  background-image:linear-gradient(rgba(0,229,255,.35) 1px,transparent 1px),
-                   linear-gradient(90deg,rgba(0,229,255,.35) 1px,transparent 1px);
-  background-size:48px 48px;
-}
-.wrap{position:relative;z-index:1;padding:18px 22px 28px;max-width:1600px;margin:0 auto}
-header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
-.brand{display:flex;flex-direction:column;gap:2px}
-.brand b{font-family:Orbitron,sans-serif;font-size:1.55rem;letter-spacing:.12em;color:var(--cyan);text-shadow:0 0 18px rgba(0,229,255,.45)}
-.brand span{color:var(--muted);font-size:.95rem;letter-spacing:.18em;text-transform:uppercase}
-.meta{display:flex;gap:18px;align-items:flex-end;font-family:"Share Tech Mono",monospace}
-.clock{font-size:2rem;color:var(--lime);letter-spacing:.06em;text-shadow:0 0 16px rgba(184,255,61,.35)}
-.sub{color:var(--muted);font-size:.78rem;text-align:right}
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
-@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
-.kpi{
-  background:linear-gradient(180deg,rgba(12,22,38,.92),rgba(8,14,24,.92));
-  border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px;
-  box-shadow:0 0 0 1px rgba(255,255,255,.02), inset 0 0 24px rgba(0,229,255,.04);
-}
-.kpi .l{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
-.kpi .n{font-family:Orbitron,sans-serif;font-size:1.8rem;margin-top:4px}
-.c-cyan{color:var(--cyan)}.c-lime{color:var(--lime)}.c-amber{color:var(--amber)}
-.c-red{color:var(--red)}.c-violet{color:var(--violet)}
-.grid{display:grid;grid-template-columns:1.35fr .65fr;gap:14px}
-@media(max-width:980px){.grid{grid-template-columns:1fr}}
-.panel{
-  background:rgba(8,14,24,.88);border:1px solid var(--line);border-radius:16px;overflow:hidden;
-  box-shadow:0 10px 40px rgba(0,0,0,.35);
-}
-.panel h3{
-  font-family:Orbitron,sans-serif;font-size:.72rem;letter-spacing:.16em;color:var(--cyan);
-  padding:12px 14px;border-bottom:1px solid var(--line);background:rgba(0,229,255,.04)
-}
-.tbl{width:100%;border-collapse:collapse;font-size:.92rem}
-.tbl th{text-align:left;font-size:.68rem;letter-spacing:.12em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
-.tbl td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
-.tbl tr:hover td{background:rgba(0,229,255,.05)}
-.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;font-weight:700;letter-spacing:.04em}
-.p-tl{background:rgba(0,229,255,.15);color:var(--cyan)}
-.p-ls{background:rgba(255,176,32,.16);color:var(--amber)}
-.p-cv{background:rgba(155,107,255,.18);color:var(--violet)}
-.p-ht{background:rgba(184,255,61,.14);color:var(--lime)}
-.p-ok{background:rgba(184,255,61,.14);color:var(--lime)}
-.p-run{background:rgba(0,229,255,.14);color:var(--cyan)}
-.p-loja{background:rgba(255,176,32,.16);color:var(--amber)}
-.p-off{background:rgba(255,59,92,.16);color:var(--red)}
-.feed{max-height:620px;overflow:auto}
-.ev{display:grid;grid-template-columns:72px 1fr;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
-.ev time{font-family:"Share Tech Mono",monospace;color:var(--cyan);font-size:.78rem}
-.ev b{display:block;font-size:.82rem;letter-spacing:.04em}
-.ev small{color:var(--muted)}
-.e-bau b{color:var(--amber)}
-.e-fim b{color:var(--red)}
-.e-ini b{color:var(--lime)}
-.e-ret b{color:var(--violet)}
-.e-cli b{color:var(--cyan)}
-.bar{height:3px;background:rgba(0,229,255,.12);overflow:hidden}
-.bar>i{display:block;height:100%;width:30%;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:scan 1.6s linear infinite}
-@keyframes scan{from{transform:translateX(-120%)}to{transform:translateX(420%)}}
-.empty{padding:28px;text-align:center;color:var(--muted)}
-footer{margin-top:12px;color:var(--muted);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase}
+@media (max-width:560px){.kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">
-      <b>CCO JUANIL</b>
-      <span>Central de Controle Operacional</span>
-    </div>
-    <div class="meta">
-      <div>
-        <div class="clock" id="relogio">--:--:--</div>
-        <div class="sub" id="subtitulo">Carregando malha…</div>
-      </div>
-    </div>
+    <div class="brand"><b>CCO JUANIL</b><span>Central de Controle Operacional</span></div>
+    <div><div class="clock" id="relogio">--:--:--</div><div class="sub" id="subtitulo">Carregando malha…</div></div>
   </header>
-  <div class="bar"><i></i></div>
   <div class="kpis" id="kpis"></div>
   <div class="grid">
     <div class="panel">
-      <h3>Frota em movimento · dia operacional</h3>
-      <div style="overflow:auto">
-        <table class="tbl">
-          <thead>
-            <tr>
-              <th>Placa</th><th>OP</th><th>Motorista</th><th>Último evento</th><th>Hora</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"><tr><td colspan="6" class="empty">Sincronizando Trucks…</td></tr></tbody>
-        </table>
-      </div>
+      <h3>Frota em movimento · Controle + Trucks</h3>
+      <div class="scroll"><table class="tbl">
+        <thead><tr><th>Placa</th><th>OP</th><th>Motorista</th><th>Destino</th><th>Último evento</th><th>Hora</th><th>Status</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="7" class="empty">Sincronizando…</td></tr></tbody>
+      </table></div>
     </div>
-    <div class="panel">
-      <h3>Radar de eventos</h3>
-      <div class="feed" id="feed"><div class="empty">Aguardando pulso da Trucks…</div></div>
-    </div>
+    <div class="panel"><h3>Radar de eventos</h3><div class="feed" id="feed"><div class="empty">Aguardando pulso…</div></div></div>
   </div>
-  <footer id="rodape">Atualização automática a cada 60s · dados TrucksLog + Controle</footer>
+  <div class="ticker"><div class="ticker-track" id="ticker"></div></div>
 </div>
 <script>
-const CONTROLE = 'https://docs.google.com/spreadsheets/d/19ztgd86-ivwJveXp0Q_032P1fFaSuC9D9uaMJ4r6mP8/gviz/tq?tqx=out:csv&gid=1559964021';
-const TRUCKS = 'https://docs.google.com/spreadsheets/d/1TtgHyiAFdj1jCZGfm4VYzqw-4bEluQ34c95cYH_M6OA/gviz/tq?tqx=out:csv&gid=149639861';
-
-function agoraBRT(){
-  return new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));
-}
-function isoOperacional(){
-  const d = agoraBRT();
-  if (d.getHours() < 1) d.setDate(d.getDate()-1);
-  return d.toISOString().slice(0,10);
-}
-function br(iso){
-  const [y,m,d]=iso.split('-'); return d+'/'+m+'/'+y;
-}
-function parseCsv(text){
-  const rows=[]; let row=[], cell='', q=false;
-  for (let i=0;i<text.length;i++){
-    const c=text[i];
-    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=c; }
-    else if(c==='"') q=true;
-    else if(c===','){ row.push(cell); cell=''; }
-    else if(c==='\n'){ row.push(cell); rows.push(row); row=[]; cell=''; }
-    else if(c!=='\r') cell+=c;
-  }
-  if(cell||row.length) { row.push(cell); rows.push(row); }
-  return rows;
-}
-function placa(v){ return String(v||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase(); }
-function hh(v){ const m=String(v||'').match(/(\d{1,2}:\d{2})/); return m?m[1].padStart(5,'0'):''; }
-function opClass(op){
-  const o=String(op||'').toUpperCase();
-  if(o==='TL') return 'p-tl'; if(o==='LS') return 'p-ls'; if(o==='CV') return 'p-cv'; if(o==='HT') return 'p-ht';
-  return 'p-run';
-}
-
-async function pull(url){
-  const r = await fetch(url+'&_='+Date.now(), {cache:'no-store'});
-  return parseCsv(await r.text());
-}
-
-function statusDe(evs){
-  const last = evs[evs.length-1] || {};
-  const e = last.ev||'';
-  if (e==='ABERTURA_BAU' || e==='INICIO_DESCARREGAMENTO') return ['BAÚ ABERTO','p-loja'];
-  if (e==='CHEGADA_CLIENTE') return ['NA LOJA','p-loja'];
-  if (e==='RETORNO') return ['RETORNO CD','p-run'];
-  if (e==='PARADA_REFEICAO') return ['ALMOÇO','p-loja'];
-  if (e==='FIM_VIAGEM' || e==='FIM_FINAL') return ['FIM','p-off'];
-  if (e==='INICIO_VIAGEM' || e==='REINICIO_VIAGEM') return ['EM VIAGEM','p-ok'];
-  return [e||'SINAL','p-run'];
-}
-
+const CONTROLE='https://docs.google.com/spreadsheets/d/19ztgd86-ivwJveXp0Q_032P1fFaSuC9D9uaMJ4r6mP8/gviz/tq?tqx=out:csv&gid=1559964021';
+const TRUCKS='https://docs.google.com/spreadsheets/d/1TtgHyiAFdj1jCZGfm4VYzqw-4bEluQ34c95cYH_M6OA/gviz/tq?tqx=out:csv&gid=149639861';
+function agoraBRT(){return new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));}
+function isoOperacional(){const d=agoraBRT();if(d.getHours()<1)d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function br(iso){const[y,m,d]=iso.split('-');return d+'/'+m+'/'+y;}
+function parseCsv(text){const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const c=text[i];if(q){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++;}else q=false;}else cell+=c;}else if(c==='"')q=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}else if(c!=='\r')cell+=c;}if(cell||row.length){row.push(cell);rows.push(row);}return rows;}
+function extrairPlaca(v){const limpo=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');const m=limpo.match(/([A-Z]{3}\d[A-Z0-9]\d{2}|[A-Z]{3}\d{4})/);return m?m[1]:limpo;}
+function hh(v){const m=String(v||'').match(/(\d{1,2}:\d{2})/);return m?m[1].padStart(5,'0'):'';}
+function dataBate(cell,iso){const p=String(iso||'').split('-');if(p.length!==3)return false;const alvos=[p[2]+'/'+p[1]+'/'+p[0],p[2]+'/'+p[1]+'/'+p[0].slice(2),iso];const d=String(cell||'').trim();return alvos.some(a=>d===a||d.indexOf(a)===0);}
+function opClass(op){const o=String(op||'').toUpperCase();if(o==='TL')return 'p-tl';if(o==='LS')return 'p-ls';if(o==='CV')return 'p-cv';if(o==='HT')return 'p-ht';return 'p-run';}
+function statusDe(evs){const e=(evs[evs.length-1]||{}).ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE')return['NA LOJA','p-loja'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM')return['EM VIAGEM','p-ok'];return[e||'SINAL','p-run'];}
+function clsEv(ev){if(ev.includes('BAU')||ev.includes('DESCARREG'))return 'e-bau';if(ev.includes('FIM'))return 'e-fim';if(ev.includes('INICIO'))return 'e-ini';if(ev.includes('RETORNO')||ev.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
+async function pull(url){const r=await fetch(url+'&_='+Date.now(),{cache:'no-store'});return parseCsv(await r.text());}
 async function carregar(){
-  const iso = isoOperacional();
-  const alvo = br(iso);
-  document.getElementById('subtitulo').textContent = 'Dia operacional '+alvo+' · pulso Trucks';
-  let log=[], ctrl=[];
-  try{ log = await pull(TRUCKS); }catch(e){ console.warn(e); }
-  try{ ctrl = await pull(CONTROLE); }catch(e){ console.warn(e); }
-
-  const evs = [];
-  for (let i=1;i<log.length;i++){
+  const iso=isoOperacional(), alvo=br(iso);
+  document.getElementById('subtitulo').textContent='Dia operacional '+alvo+' · Controle + Trucks';
+  let log=[],ctrl=[];
+  try{log=await pull(TRUCKS);}catch(e){}
+  try{ctrl=await pull(CONTROLE);}catch(e){}
+  const evs=[];
+  for(let i=1;i<log.length;i++){
     const r=log[i]; if(!r||!r[0]) continue;
     if(String(r[0]).indexOf(alvo)!==0) continue;
-    const ev=String(r[1]||'').toUpperCase();
-    const pl=placa(r[2]); if(!pl) continue;
+    const ev=String(r[1]||'').toUpperCase(); const pl=extrairPlaca(r[2]); if(!pl) continue;
     if(['CRIOU','AUTO_CRIOU','ATUALIZOU','SEM_LANC','IGNORA_CD','REFEICAO_SEM_MOT'].includes(ev)) continue;
-    evs.push({ ts:r[0], ev, placa:pl, det:String(r[3]||''), hora: hh(r[3])||hh(r[0]) });
+    evs.push({ev,placa:pl,hora:hh(r[3])||hh(r[0])});
   }
-
-  const h = (ctrl[0]||[]).map(x=>String(x).toUpperCase());
-  const iOp=h.indexOf('OP'), iVeic=h.findIndex(x=>x.includes('VEIC')), iMot=h.indexOf('MOTORISTA');
+  const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase().replace(/"/g,''));
+  let iData=h.indexOf('DATA'); if(iData<0) iData=0;
+  const iOp=h.indexOf('OP')<0?2:h.indexOf('OP');
+  const iV=Math.max(h.findIndex(x=>x.includes('VEIC')),3);
+  const iMot=h.indexOf('MOTORISTA')<0?4:h.indexOf('MOTORISTA');
+  const iDest=h.indexOf('DESTINO');
   const mapaCtrl={};
   for(let i=1;i<ctrl.length;i++){
     const r=ctrl[i]; if(!r) continue;
-    const pl=placa(r[iVeic>=0?iVeic:3]); if(!pl) continue;
-    mapaCtrl[pl]={ op:String(r[iOp>=0?iOp:2]||'').toUpperCase(), mot:String(r[iMot>=0?iMot:4]||'') };
+    if(!dataBate(r[iData],iso)) continue;
+    const pl=extrairPlaca(r[iV]); if(!pl) continue;
+    mapaCtrl[pl]={op:String(r[iOp]||'').trim().toUpperCase(),mot:String(r[iMot]||'').trim(),dest:iDest>=0?String(r[iDest]||'').trim():''};
   }
-
-  const por={};
-  evs.forEach(e=>{ (por[e.placa]=por[e.placa]||[]).push(e); });
-
-  let viagem=0, loja=0, bau=0, ret=0, fim=0, alm=0;
-  const linhas=[];
-  Object.keys(por).sort().forEach(pl=>{
-    const lista=por[pl];
-    const last=lista[lista.length-1];
-    const [st,cls]=statusDe(lista);
+  const por={}; evs.forEach(e=>{(por[e.placa]=por[e.placa]||[]).push(e);});
+  const placas=new Set([...Object.keys(por),...Object.keys(mapaCtrl)]);
+  let viagem=0,loja=0,bau=0,fim=0,alm=0; const linhas=[];
+  [...placas].sort((a,b)=>((mapaCtrl[a]||{}).mot||a).localeCompare((mapaCtrl[b]||{}).mot||b,'pt-BR')).forEach(pl=>{
+    const lista=por[pl]||[]; if(!lista.length && !(mapaCtrl[pl]||{}).mot) return;
+    const last=lista[lista.length-1]||{};
+    const [st,cls]=lista.length?statusDe(lista):['NO CONTROLE','p-run'];
     if(st==='EM VIAGEM'||st==='RETORNO CD') viagem++;
     if(st==='NA LOJA') loja++;
-    if(st==='BAÚ ABERTO') { bau++; loja++; }
-    if(st==='RETORNO CD') ret++;
-    if(st==='FIM') fim++;
-    if(st==='ALMOÇO') alm++;
+    if(st==='BAÚ ABERTO'){bau++;loja++;}
+    if(st==='FIM') fim++; if(st==='ALMOÇO') alm++;
     const info=mapaCtrl[pl]||{};
-    linhas.push(`<tr>
-      <td style="font-weight:800;letter-spacing:.06em">${pl}</td>
-      <td>${info.op?`<span class="pill ${opClass(info.op)}">${info.op}</span>`:'—'}</td>
-      <td>${info.mot||'—'}</td>
-      <td>${last.ev.replace(/_/g,' ')}</td>
-      <td style="font-family:Share Tech Mono,monospace">${last.hora||'—'}</td>
-      <td><span class="pill ${cls}">${st}</span></td>
-    </tr>`);
+    linhas.push('<tr><td style="font-weight:800">'+pl+'</td><td>'+(info.op?'<span class="pill '+opClass(info.op)+'">'+info.op+'</span>':'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+(info.dest||'—')+'</td><td>'+(last.ev?last.ev.replace(/_/g,' '):'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(last.hora||'—')+'</td><td><span class="pill '+cls+'">'+st+'</span></td></tr>');
   });
-  document.getElementById('tbody').innerHTML = linhas.join('') || '<tr><td colspan="6" class="empty">Nenhum evento Trucks neste dia operacional</td></tr>';
-
-  document.getElementById('kpis').innerHTML = `
-    <div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">${evs.length}</div></div>
-    <div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">${viagem}</div></div>
-    <div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">${loja}</div></div>
-    <div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">${bau}</div></div>
-    <div class="kpi"><div class="l">Almoço</div><div class="n c-violet">${alm}</div></div>
-    <div class="kpi"><div class="l">Encerrados</div><div class="n c-red">${fim}</div></div>`;
-
-  const feed = evs.slice(-40).reverse().map(e=>{
-    let cls='e-cli';
-    if(e.ev.includes('BAU')||e.ev.includes('DESCARREG')) cls='e-bau';
-    else if(e.ev.includes('FIM')) cls='e-fim';
-    else if(e.ev.includes('INICIO')) cls='e-ini';
-    else if(e.ev.includes('RETORNO')||e.ev.includes('REFEICAO')) cls='e-ret';
-    const info=mapaCtrl[e.placa]||{};
-    return `<div class="ev ${cls}"><time>${e.hora||'--:--'}</time><div><b>${e.ev.replace(/_/g,' ')}</b><small>${e.placa}${info.mot?' · '+info.mot:''}${info.op?' · '+info.op:''}</small></div></div>`;
-  }).join('');
-  document.getElementById('feed').innerHTML = feed || '<div class="empty">Sem eventos classificados</div>';
-  document.getElementById('rodape').textContent = 'Último pulso '+agoraBRT().toLocaleTimeString('pt-BR')+' · '+Object.keys(por).length+' placas com sinal';
+  document.getElementById('tbody').innerHTML=linhas.join('')||'<tr><td colspan="7" class="empty">Sem dados deste dia</td></tr>';
+  document.getElementById('kpis').innerHTML='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+evs.length+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
+  const recent=evs.slice(-40).reverse();
+  document.getElementById('feed').innerHTML=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><time>'+(e.hora||'--:--')+'</time><div><b>'+e.ev.replace(/_/g,' ')+'</b><small>'+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Sem eventos</div>';
+  const ticks=recent.filter(e=>['INICIO_VIAGEM','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','RETORNO','PARADA_REFEICAO','FIM_VIAGEM','FIM_FINAL'].includes(e.ev));
+  const html=ticks.map(e=>{const info=mapaCtrl[e.placa]||{};return '<span class="tick '+clsEv(e.ev)+'"><time>'+e.hora+'</time><b>'+e.ev.replace(/_/g,' ')+'</b> '+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</span>';}).join('');
+  document.getElementById('ticker').innerHTML=(html+html)||'<span class="tick">Aguardando eventos…</span>';
 }
-
-function tick(){
-  const d=agoraBRT();
-  document.getElementById('relogio').textContent=d.toLocaleTimeString('pt-BR');
-}
-tick(); setInterval(tick,1000);
-carregar(); setInterval(carregar,60000);
+function tick(){document.getElementById('relogio').textContent=agoraBRT().toLocaleTimeString('pt-BR');}
+tick();setInterval(tick,1000);carregar();setInterval(carregar,60000);
 </script>
 </body>
 </html>
