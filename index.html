@@ -77,6 +77,7 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
 </style>
 </head>
 <body>
+<div id="swapCover" style="display:none;position:fixed;inset:0;background:#05070d;z-index:99999"></div>
 <div class="wrap">
   <header>
     <div class="brand"><b>CCO JUANIL</b><span>Central de Controle Operacional</span></div>
@@ -282,7 +283,27 @@ function pintar(){
   if(tk && tk.dataset.sig!==next){ tk.dataset.sig=next; tk.innerHTML=next; }
 }
 function tick(){document.getElementById('relogio').textContent=agoraBRT().toLocaleTimeString('pt-BR');}
+async function hashTxt(t){
+  const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function checarGithub(){
+  try{
+    const url=location.href.split('#')[0];
+    const sep=url.indexOf('?')>=0?'&':'?';
+    const txt=await (await fetch(url+sep+'_gh='+Date.now(),{cache:'no-store'})).text();
+    const h=await hashTxt(txt);
+    if(!window.__CCO_HASH){ window.__CCO_HASH=h; return; }
+    if(h!==window.__CCO_HASH){
+      const c=document.getElementById('swapCover');
+      if(c) c.style.display='block';
+      location.reload();
+    }
+  }catch(e){}
+}
 tick();setInterval(tick,1000);renderFiltros();
+checarGithub();setInterval(checarGithub,90000);
+
 (function(){ const el=document.getElementById('fData'); DATA_ISO=isoOperacional(); if(el) el.value=DATA_ISO; })();
 carregar();
 setInterval(function(){ if(DATA_ISO===isoOperacional()) carregar(); },10000);
