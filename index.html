@@ -21,6 +21,19 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
 .brand span{display:block;color:var(--muted);font-size:clamp(.78rem,1.1vw,.98rem);letter-spacing:.16em;text-transform:uppercase}
 .clock{font-family:"Share Tech Mono",monospace;font-size:clamp(1.6rem,3vw,2.35rem);color:var(--lime);text-align:right}
 .sub{color:var(--muted);font-size:clamp(.72rem,1vw,.88rem);text-align:right}
+.status-box{text-align:right}
+.sit{display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-bottom:4px}
+.sit small{color:var(--muted);letter-spacing:.12em;font-size:clamp(.72rem,1vw,.88rem);text-transform:uppercase}
+.pulse{font-family:Orbitron,sans-serif;font-size:clamp(1.05rem,2vw,1.35rem);letter-spacing:.18em;font-weight:800}
+.pulse.on{color:#6cff2b;text-shadow:0 0 10px #6cff2b,0 0 24px #3cff00;animation:blinkOn 1.1s ease-in-out infinite}
+.pulse.off{color:#ff2a4a;text-shadow:0 0 10px #ff2a4a,0 0 24px #ff0033;animation:blinkOff 1.1s ease-in-out infinite}
+@keyframes blinkOn{0%,100%{opacity:1;filter:brightness(1.2)}50%{opacity:.35;filter:brightness(.7)}}
+@keyframes blinkOff{0%,100%{opacity:1;filter:brightness(1.15)}50%{opacity:.3;filter:brightness(.65)}}
+
+.hist{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hist input[type=date]{background:#0b1220;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:5px 8px;font:600 .9rem Rajdhani,sans-serif}
+.hist button{background:rgba(8,14,24,.9);border:1px solid var(--line);color:var(--cyan);border-radius:8px;padding:5px 10px;font:700 .8rem Rajdhani,sans-serif;cursor:pointer;letter-spacing:.08em}
+.hist .tag{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}
 .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
 .kpi{background:rgba(8,14,24,.92);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .kpi .l{font-size:clamp(.78rem,1.05vw,.95rem);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -65,7 +78,11 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
   <header>
     <div class="brand"><b>CCO JUANIL</b><span>Central de Controle Operacional</span></div>
     <div class="filtros" id="filtros"></div>
-    <div><div class="clock" id="relogio">--:--:--</div><div class="sub" id="subtitulo">Carregando malha…</div></div>
+    <div class="status-box">
+      <div class="sit" id="situacao"><span class="pulse off">OFFLINE</span><small>OPERAÇÕES ENCERRADAS</small></div>
+      <div class="clock" id="relogio">--:--:--</div>
+      <div class="sub" id="subtitulo">Carregando malha…</div>
+    </div>
   </header>
   <div class="kpis" id="kpis"></div>
   <div class="grid">
@@ -94,6 +111,18 @@ function opClass(op){const o=String(op||'').toUpperCase();if(o==='TL')return 'p-
 function statusDe(evs){const e=(evs[evs.length-1]||{}).ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE')return['NA LOJA','p-loja'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM')return['EM VIAGEM','p-ok'];return[e||'SINAL','p-run'];}
 function clsEv(ev){if(ev.includes('BAU')||ev.includes('DESCARREG'))return 'e-bau';if(ev.includes('FIM'))return 'e-fim';if(ev.includes('INICIO'))return 'e-ini';if(ev.includes('RETORNO')||ev.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
 async function pull(url){const r=await fetch(url+'&_='+Date.now(),{cache:'no-store'});return parseCsv(await r.text());}
+let DATA_ISO = '';
+function consultarData(){
+  const v=document.getElementById('fData').value;
+  if(v) DATA_ISO=v;
+  carregar();
+}
+function voltarHoje(){
+  DATA_ISO=isoOperacional();
+  const el=document.getElementById('fData');
+  if(el) el.value=DATA_ISO;
+  carregar();
+}
 async function carregar(){
   const iso=isoOperacional(), alvo=br(iso);
   document.getElementById('subtitulo').textContent='Dia operacional '+alvo+' · Controle + Trucks';
@@ -168,6 +197,13 @@ function pintar(){
   const tb=document.getElementById('tbody');
   const html=linhas.join('')||'<tr><td colspan="7" class="empty">Sem dados deste filtro</td></tr>';
   if(tb && tb.innerHTML!==html) tb.innerHTML=html;
+  const ativo = viagem+loja+bau+alm;
+  const sit=document.getElementById('situacao');
+  if(sit){
+    if(ativo>0) sit.innerHTML='<span class="pulse on">ONLINE</span><small>VEÍCULOS TRANSITANDO NO MOMENTO</small>';
+    else sit.innerHTML='<span class="pulse off">OFFLINE</span><small>OPERAÇÕES ENCERRADAS</small>';
+  }
+
   const kpis=document.getElementById('kpis');
   if(kpis) kpis.innerHTML='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+evs.length+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
   const recent=evs.slice(-40).reverse();
@@ -182,7 +218,10 @@ function pintar(){
   if(tk && tk.dataset.sig!==next){ tk.dataset.sig=next; tk.innerHTML=next; }
 }
 function tick(){document.getElementById('relogio').textContent=agoraBRT().toLocaleTimeString('pt-BR');}
-tick();setInterval(tick,1000);renderFiltros();carregar();setInterval(carregar,10000);
+tick();setInterval(tick,1000);renderFiltros();
+(function(){ const el=document.getElementById('fData'); DATA_ISO=isoOperacional(); if(el) el.value=DATA_ISO; })();
+carregar();
+setInterval(function(){ if(DATA_ISO===isoOperacional()) carregar(); },10000);
 </script>
 </body>
 </html>
