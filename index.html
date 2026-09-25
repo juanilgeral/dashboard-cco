@@ -47,7 +47,7 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
 .scroll{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .panel h3{font-family:Orbitron,sans-serif;font-size:clamp(.78rem,1.05vw,.95rem);letter-spacing:.14em;color:var(--cyan);padding:10px 12px;border-bottom:1px solid var(--line)}
 .feed{flex:1;min-height:0;overflow:hidden;position:relative}
-.feed-track{display:block;animation:feedUp 36s linear infinite}
+.feed-track{display:block;animation:feedUp 22s linear infinite}
 .feed:hover .feed-track{animation-play-state:paused}
 @keyframes feedUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 .tbl{width:100%;border-collapse:collapse;font-size:clamp(1.02rem,1.4vw,1.22rem)}
@@ -60,7 +60,7 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
 .ev time{font-family:"Share Tech Mono",monospace;color:var(--cyan)}.ev small{color:var(--muted)}
 .e-bau b{color:var(--amber)}.e-fim b{color:var(--red)}.e-ini b{color:var(--lime)}.e-ret b{color:var(--violet)}.e-cli b{color:var(--cyan)}
 .ticker{flex:0 0 44px;display:flex;align-items:center;overflow:hidden;border-top:1px solid var(--line);background:rgba(0,20,32,.95)}
-.ticker-track{display:flex;white-space:nowrap;animation:slide 150s linear infinite}
+.ticker-track{display:flex;white-space:nowrap;animation:slide 42s linear infinite}
 .ticker-track:hover{animation-play-state:paused}
 .tick{display:inline-flex;align-items:center;gap:10px;padding:0 28px;font-size:clamp(1.02rem,1.3vw,1.18rem)}
 .tick time{font-family:"Share Tech Mono",monospace;color:var(--cyan)}
@@ -112,6 +112,17 @@ function evNome(ev){return String(ev||'').toUpperCase().replace(/\s+/g,'_');}
 function ehFimReal(ev){ev=evNome(ev);return ev==='FIM_VIAGEM'||ev==='FIM_FINAL'||ev.indexOf('FIM_CD')>=0||ev==='HT_FIM_CD'||ev.indexOf('FIM CD')>=0;}
 function ehFimLojaMacro(ev){ev=evNome(ev);return ev.indexOf('FIM_LOJA')>=0||ev.indexOf('FIM_MACRO')>=0||ev.indexOf('LS_FIM')>=0||ev.indexOf('CV_FIM_LOJA')>=0;}
 function aindaNaRua(ev){ev=evNome(ev);return ['INICIO_VIAGEM','REINICIO_VIAGEM','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','RETORNO','PARADA_REFEICAO'].includes(ev)||ehFimLojaMacro(ev);}
+function placaEncerrada(lista, dest){
+  if(destEncerrado(dest)) return true;
+  const evs=(lista||[]).map(e=>evNome(e.ev));
+  const last=evs[evs.length-1]||'';
+  if(ehFimReal(last)) return true;
+  const iFim=evs.reduce((a,e,i)=> (e==='FIM_VIAGEM'||e==='FIM_FINAL'||e.indexOf('FIM_VIAGEM')>=0)?i:a, -1);
+  const iIni=evs.reduce((a,e,i)=> (e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM')?i:a, -1);
+  if(iFim>=0 && iFim>=iIni) return true;
+  return false;
+}
+function destEncerrado(d){d=String(d||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');return /GARAGEM|MANUTEN|BASE|JUANIL/.test(d);}
 function horaNum(h){const m=String(h||'').match(/(\d{1,2}):(\d{2})/);return m?Number(m[1])*60+Number(m[2]):-1;}
 function br(iso){const[y,m,d]=iso.split('-');return d+'/'+m+'/'+y;}
 function parseCsv(text){const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const c=text[i];if(q){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++;}else q=false;}else cell+=c;}else if(c==='"')q=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}else if(c!=='\r')cell+=c;}if(cell||row.length){row.push(cell);rows.push(row);}return rows;}
@@ -171,6 +182,12 @@ async function carregar(){
     const temHoje=lista.some(e=>e.hoje);
     if(!temHoje){
       if(ehFimReal(last.ev)) { delete por[pl]; return; }
+      if(lista.some(e=>e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL') && !lista.some((e,i,a)=>{
+        const lastFim=a.map((x,ix)=> (x.ev==='FIM_VIAGEM'||x.ev==='FIM_FINAL')?ix:-1).filter(n=>n>=0).pop();
+        return (e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM') && i>lastFim;
+      })) { delete por[pl]; return; }
+      const dest=((mapaCtrl[pl]||{}).dest||'');
+      if(destEncerrado(dest)) { delete por[pl]; return; }
       if(ehFimLojaMacro(last.ev) && horaNum(last.hora)>=0 && horaNum(last.hora)<18*60) { delete por[pl]; return; }
       if(!aindaNaRua(last.ev)) { delete por[pl]; return; }
     }
@@ -214,12 +231,21 @@ function pintar(){
     const temHoje=lista.some(e=>e.hoje);
     if(!temHoje){
       if(ehFimReal(last.ev)) { delete por[pl]; return; }
+      if(lista.some(e=>e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL') && !lista.some((e,i,a)=>{
+        const lastFim=a.map((x,ix)=> (x.ev==='FIM_VIAGEM'||x.ev==='FIM_FINAL')?ix:-1).filter(n=>n>=0).pop();
+        return (e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM') && i>lastFim;
+      })) { delete por[pl]; return; }
+      const dest=((mapaCtrl[pl]||{}).dest||'');
+      if(destEncerrado(dest)) { delete por[pl]; return; }
       if(ehFimLojaMacro(last.ev) && horaNum(last.hora)>=0 && horaNum(last.hora)<18*60) { delete por[pl]; return; }
       if(!aindaNaRua(last.ev)) { delete por[pl]; return; }
     }
   });
   const evsVivos=[]; Object.keys(por).forEach(pl=>por[pl].forEach(e=>evsVivos.push(e)));
 
+  Object.keys(por).forEach(pl=>{
+    if(placaEncerrada(por[pl], (mapaCtrl[pl]||{}).dest)) delete por[pl];
+  });
   let viagem=0,loja=0,bau=0,fim=0,alm=0; const linhas=[];
   placas.forEach(pl=>{
     const lista=por[pl]||[]; if(!lista.length) return;
