@@ -60,7 +60,7 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
 .ev time{font-family:"Share Tech Mono",monospace;color:var(--cyan)}.ev small{color:var(--muted)}
 .e-bau b{color:var(--amber)}.e-fim b{color:var(--red)}.e-ini b{color:var(--lime)}.e-ret b{color:var(--violet)}.e-cli b{color:var(--cyan)}
 .ticker{flex:0 0 44px;display:flex;align-items:center;overflow:hidden;border-top:1px solid var(--line);background:rgba(0,20,32,.95)}
-.ticker-track{display:flex;white-space:nowrap;animation:slide 85s linear infinite}
+.ticker-track{display:flex;white-space:nowrap;animation:slide 120s linear infinite}
 .ticker-track:hover{animation-play-state:paused}
 .tick{display:inline-flex;align-items:center;gap:10px;padding:0 28px;font-size:clamp(1.02rem,1.3vw,1.18rem)}
 .tick time{font-family:"Share Tech Mono",monospace;color:var(--cyan)}
@@ -132,6 +132,7 @@ function hh(v){const m=String(v||'').match(/(\d{1,2}:\d{2})/);return m?m[1].padS
 function dataBate(cell,iso){const p=String(iso||'').split('-');if(p.length!==3)return false;const alvos=[p[2]+'/'+p[1]+'/'+p[0],p[2]+'/'+p[1]+'/'+p[0].slice(2),iso];const d=String(cell||'').trim();return alvos.some(a=>d===a||d.indexOf(a)===0);}
 function opClass(op){const o=String(op||'').toUpperCase();if(o==='TL')return 'p-tl';if(o==='LS')return 'p-ls';if(o==='CV')return 'p-cv';if(o==='HT')return 'p-ht';return 'p-run';}
 function statusDe(evs){const e=(evs[evs.length-1]||{}).ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE'||ehFimLojaMacro(e))return['NA LOJA','p-loja'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(ehFimReal(e)||e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM')return['EM VIAGEM','p-ok'];return[e||'SINAL','p-run'];}
+function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(e==='REINICIO_VIAGEM'||d.indexOf('REINICIO')>=0)return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM';return String(ev||'').replace(/_/g,' ');}
 function clsEv(ev){if(ev.includes('BAU')||ev.includes('DESCARREG'))return 'e-bau';if(ev.includes('FIM'))return 'e-fim';if(ev.includes('INICIO'))return 'e-ini';if(ev.includes('RETORNO')||ev.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
 async function pull(url){const r=await fetch(url+'&_='+Date.now(),{cache:'no-store'});return parseCsv(await r.text());}
 let DATA_ISO = '';
@@ -161,7 +162,7 @@ async function carregar(){
     if(!alvos.some(a=>dia.indexOf(a)===0)) continue;
     const ev=String(r[1]||'').toUpperCase(); const pl=extrairPlaca(r[2]); if(!pl) continue;
     if(['CRIOU','AUTO_CRIOU','ATUALIZOU','SEM_LANC','IGNORA_CD','REFEICAO_SEM_MOT'].includes(ev)) continue;
-    evs.push({ev,placa:pl,hora:hh(r[3])||hh(r[0]),dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0});
+    evs.push({ev,placa:pl,hora:hh(r[3])||hh(r[0]),det:String(r[3]||''),dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0});
   }
   const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase().replace(/"/g,''));
   let iData=h.indexOf('DATA'); if(iData<0) iData=0;
@@ -257,7 +258,7 @@ function pintar(){
     if(st==='BAÚ ABERTO'){bau++;loja++;}
     if(st==='FIM') fim++; if(st==='ALMOÇO') alm++;
     const info=mapaCtrl[pl]||{};
-    linhas.push('<tr><td style="font-weight:800">'+pl+'</td><td>'+(info.op?'<span class="pill '+opClass(info.op)+'">'+info.op+'</span>':'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+(info.dest||'—')+'</td><td>'+(last.ev?last.ev.replace(/_/g,' '):'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(last.hora||'—')+'</td><td><span class="pill '+cls+'">'+st+'</span></td></tr>');
+    linhas.push('<tr><td style="font-weight:800">'+pl+'</td><td>'+(info.op?'<span class="pill '+opClass(info.op)+'">'+info.op+'</span>':'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+(info.dest||'—')+'</td><td>'+(last.ev?rotuloEv(last.ev,last.det):'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(last.hora||'—')+'</td><td><span class="pill '+cls+'">'+st+'</span></td></tr>');
   });
   const tb=document.getElementById('tbody');
   const html=linhas.join('')||'<tr><td colspan="7" class="empty">Sem dados deste filtro</td></tr>';
@@ -272,12 +273,12 @@ function pintar(){
   const kpis=document.getElementById('kpis');
   if(kpis) kpis.innerHTML='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+evs.length+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
   const recent=evs.slice(-40).reverse();
-  const feed=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><time>'+(e.hora||'--:--')+'</time><div><b>'+e.ev.replace(/_/g,' ')+'</b><small>'+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Sem eventos</div>';
+  const feed=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><time>'+(e.hora||'--:--')+'</time><div><b>'+rotuloEv(e.ev,e.det)+'</b><small>'+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Sem eventos</div>';
   const fd=document.getElementById('feed');
   const feedWrap='<div class="feed-track">'+feed+feed+'</div>';
   if(fd && fd.dataset.sig!==feed){ fd.dataset.sig=feed; fd.innerHTML=feedWrap; }
   const ticks=recent.filter(e=>['INICIO_VIAGEM','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','RETORNO','PARADA_REFEICAO','FIM_VIAGEM','FIM_FINAL'].includes(e.ev));
-  const tickHtml=ticks.map(e=>{const info=mapaCtrl[e.placa]||{};return '<span class="tick '+clsEv(e.ev)+'"><time>'+e.hora+'</time><b>'+e.ev.replace(/_/g,' ')+'</b> '+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</span>';}).join('');
+  const tickHtml=ticks.map(e=>{const info=mapaCtrl[e.placa]||{};return '<span class="tick '+clsEv(e.ev)+'"><time>'+e.hora+'</time><b>'+rotuloEv(e.ev,e.det)+'</b> '+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</span>';}).join('');
   const tk=document.getElementById('ticker');
   const next=(tickHtml+tickHtml)||'<span class="tick">Aguardando eventos…</span>';
   if(tk && tk.dataset.sig!==next){ tk.dataset.sig=next; tk.innerHTML=next; }
