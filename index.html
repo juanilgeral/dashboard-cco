@@ -124,7 +124,8 @@ function placaEncerrada(lista, dest){
   if(iFim>=0 && iFim>=iIni) return true;
   return false;
 }
-function destEncerrado(d){d=String(d||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');return /GARAGEM|MANUTEN|BASE|JUANIL/.test(d);}
+function soMadrugada(){return agoraBRT().getHours()<8;}
+function destEncerrado(d){d=String(d||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');return /GARAGEM MANUTEN|MANUTENCAO/.test(d);}
 function horaNum(h){const m=String(h||'').match(/(\d{1,2}):(\d{2})/);return m?Number(m[1])*60+Number(m[2]):-1;}
 function br(iso){const[y,m,d]=iso.split('-');return d+'/'+m+'/'+y;}
 function parseCsv(text){const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const c=text[i];if(q){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++;}else q=false;}else cell+=c;}else if(c==='"')q=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}else if(c!=='\r')cell+=c;}if(cell||row.length){row.push(cell);rows.push(row);}return rows;}
@@ -246,10 +247,16 @@ function pintar(){
   });
   const evsVivos=[]; Object.keys(por).forEach(pl=>por[pl].forEach(e=>evsVivos.push(e)));
 
+  let algumNaRua=false;
   Object.keys(por).forEach(pl=>{
-    if(placaEncerrada(por[pl], (mapaCtrl[pl]||{}).dest)) delete por[pl];
+    const lista=por[pl]||[];
+    const last=lista[lista.length-1];
+    if(last && aindaNaRua(last.ev) && !placaEncerrada(lista,(mapaCtrl[pl]||{}).dest)) algumNaRua=true;
   });
   let viagem=0,loja=0,bau=0,fim=0,alm=0; const linhas=[];
+  if(!algumNaRua){
+    placas.length=0;
+  }
   placas.forEach(pl=>{
     const lista=por[pl]||[]; if(!lista.length) return;
     const last=lista[lista.length-1]||{};
@@ -262,7 +269,7 @@ function pintar(){
     linhas.push('<tr><td style="font-weight:800">'+pl+'</td><td>'+(info.op?'<span class="pill '+opClass(info.op)+'">'+info.op+'</span>':'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+(info.dest||'—')+'</td><td>'+(last.ev?rotuloEv(last.ev,last.det):'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(last.hora||'—')+'</td><td><span class="pill '+cls+'">'+st+'</span></td></tr>');
   });
   const tb=document.getElementById('tbody');
-  const html=linhas.join('')||'<tr><td colspan="7" class="empty">Sem dados deste filtro</td></tr>';
+  const html=linhas.join('')||'<tr><td colspan="7" class="empty">Aguardando saídas</td></tr>';
   if(tb && tb.innerHTML!==html) tb.innerHTML=html;
   const ativo = viagem+loja+bau+alm;
   const sit=document.getElementById('situacao');
@@ -275,7 +282,7 @@ function pintar(){
   var kpiHtml='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+evs.length+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
   if(kpis && kpis.dataset.sig!==kpiHtml){ kpis.dataset.sig=kpiHtml; kpis.innerHTML=kpiHtml; }
   const recent=evs.slice(-40).reverse();
-  const feed=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><span class="pl">'+e.placa+'</span><time>'+(e.hora||'--:--')+'</time><div><b>'+rotuloEv(e.ev,e.det)+'</b><small>'+(info.mot||'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Sem eventos</div>';
+  const feed=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><span class="pl">'+e.placa+'</span><time>'+(e.hora||'--:--')+'</time><div><b>'+rotuloEv(e.ev,e.det)+'</b><small>'+(info.mot||'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Aguardando eventos</div>';
   const fd=document.getElementById('feed');
   const feedWrap='<div class="feed-track">'+feed+feed+'</div>';
   if(fd && fd.dataset.sig!==feed){ fd.dataset.sig=feed; fd.innerHTML=feedWrap; }
