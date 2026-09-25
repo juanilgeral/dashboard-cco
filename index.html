@@ -56,8 +56,9 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
 .pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:.9rem;font-weight:700}
 .p-tl{background:rgba(0,229,255,.15);color:var(--cyan)}.p-ls{background:rgba(255,176,32,.16);color:var(--amber)}.p-cv{background:rgba(155,107,255,.18);color:var(--violet)}.p-ht{background:rgba(184,255,61,.14);color:var(--lime)}
 .p-ok{background:rgba(184,255,61,.14);color:var(--lime)}.p-run{background:rgba(0,229,255,.14);color:var(--cyan)}.p-loja{background:rgba(255,176,32,.16);color:var(--amber)}.p-off{background:rgba(255,59,92,.16);color:var(--red)}
-.ev{display:grid;grid-template-columns:78px 1fr;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:clamp(1rem,1.25vw,1.14rem)}
-.ev time{font-family:"Share Tech Mono",monospace;color:var(--cyan)}.ev small{color:var(--muted)}
+.ev{display:grid;grid-template-columns:92px 64px 1fr;gap:8px;align-items:center;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:clamp(1rem,1.25vw,1.14rem)}
+.ev .pl,.ev time{font-family:"Share Tech Mono",monospace;color:var(--cyan);font-size:inherit;letter-spacing:.04em}
+.ev small{color:var(--muted)}
 .e-bau b{color:var(--amber)}.e-fim b{color:var(--red)}.e-ini b{color:var(--lime)}.e-ret b{color:var(--violet)}.e-cli b{color:var(--cyan)}
 .ticker{flex:0 0 44px;display:flex;align-items:center;overflow:hidden;border-top:1px solid var(--line);background:rgba(0,20,32,.95)}
 .ticker-track{display:flex;white-space:nowrap;animation:slide 120s linear infinite}
@@ -271,9 +272,10 @@ function pintar(){
   }
 
   const kpis=document.getElementById('kpis');
-  if(kpis) kpis.innerHTML='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+evs.length+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
+  var kpiHtml='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+evs.length+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
+  if(kpis && kpis.dataset.sig!==kpiHtml){ kpis.dataset.sig=kpiHtml; kpis.innerHTML=kpiHtml; }
   const recent=evs.slice(-40).reverse();
-  const feed=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><time>'+(e.hora||'--:--')+'</time><div><b>'+rotuloEv(e.ev,e.det)+'</b><small>'+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Sem eventos</div>';
+  const feed=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><span class="pl">'+e.placa+'</span><time>'+(e.hora||'--:--')+'</time><div><b>'+rotuloEv(e.ev,e.det)+'</b><small>'+(info.mot||'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Sem eventos</div>';
   const fd=document.getElementById('feed');
   const feedWrap='<div class="feed-track">'+feed+feed+'</div>';
   if(fd && fd.dataset.sig!==feed){ fd.dataset.sig=feed; fd.innerHTML=feedWrap; }
@@ -296,9 +298,8 @@ async function checarGithub(){
     const h=await hashTxt(txt);
     if(!window.__CCO_HASH){ window.__CCO_HASH=h; return; }
     if(h!==window.__CCO_HASH){
-      const c=document.getElementById('swapCover');
-      if(c) c.style.display='block';
-      location.reload();
+      window.__CCO_HASH=h;
+      /* sem reload: evita piscar. dados já atualizam a cada 10s */
     }
   }catch(e){}
 }
