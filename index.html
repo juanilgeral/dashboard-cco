@@ -108,14 +108,18 @@ const TRUCKS='https://docs.google.com/spreadsheets/d/1TtgHyiAFdj1jCZGfm4VYzqw-4b
 function agoraBRT(){return new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));}
 function isoOperacional(){const d=agoraBRT();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function isoOntem(){const d=agoraBRT();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function ehFim(ev){ev=String(ev||'').toUpperCase();return ev==='FIM_VIAGEM'||ev==='FIM_FINAL';}
+function evNome(ev){return String(ev||'').toUpperCase().replace(/\s+/g,'_');}
+function ehFimReal(ev){ev=evNome(ev);return ev==='FIM_VIAGEM'||ev==='FIM_FINAL'||ev.indexOf('FIM_CD')>=0||ev==='HT_FIM_CD'||ev.indexOf('FIM CD')>=0;}
+function ehFimLojaMacro(ev){ev=evNome(ev);return ev.indexOf('FIM_LOJA')>=0||ev.indexOf('FIM_MACRO')>=0||ev.indexOf('LS_FIM')>=0||ev.indexOf('CV_FIM_LOJA')>=0;}
+function aindaNaRua(ev){ev=evNome(ev);return ['INICIO_VIAGEM','REINICIO_VIAGEM','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','RETORNO','PARADA_REFEICAO'].includes(ev)||ehFimLojaMacro(ev);}
+function horaNum(h){const m=String(h||'').match(/(\d{1,2}):(\d{2})/);return m?Number(m[1])*60+Number(m[2]):-1;}
 function br(iso){const[y,m,d]=iso.split('-');return d+'/'+m+'/'+y;}
 function parseCsv(text){const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const c=text[i];if(q){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++;}else q=false;}else cell+=c;}else if(c==='"')q=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}else if(c!=='\r')cell+=c;}if(cell||row.length){row.push(cell);rows.push(row);}return rows;}
 function extrairPlaca(v){const limpo=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');const m=limpo.match(/([A-Z]{3}\d[A-Z0-9]\d{2}|[A-Z]{3}\d{4})/);return m?m[1]:limpo;}
 function hh(v){const m=String(v||'').match(/(\d{1,2}:\d{2})/);return m?m[1].padStart(5,'0'):'';}
 function dataBate(cell,iso){const p=String(iso||'').split('-');if(p.length!==3)return false;const alvos=[p[2]+'/'+p[1]+'/'+p[0],p[2]+'/'+p[1]+'/'+p[0].slice(2),iso];const d=String(cell||'').trim();return alvos.some(a=>d===a||d.indexOf(a)===0);}
 function opClass(op){const o=String(op||'').toUpperCase();if(o==='TL')return 'p-tl';if(o==='LS')return 'p-ls';if(o==='CV')return 'p-cv';if(o==='HT')return 'p-ht';return 'p-run';}
-function statusDe(evs){const e=(evs[evs.length-1]||{}).ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE')return['NA LOJA','p-loja'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM')return['EM VIAGEM','p-ok'];return[e||'SINAL','p-run'];}
+function statusDe(evs){const e=(evs[evs.length-1]||{}).ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE'||ehFimLojaMacro(e))return['NA LOJA','p-loja'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(ehFimReal(e)||e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM')return['EM VIAGEM','p-ok'];return[e||'SINAL','p-run'];}
 function clsEv(ev){if(ev.includes('BAU')||ev.includes('DESCARREG'))return 'e-bau';if(ev.includes('FIM'))return 'e-fim';if(ev.includes('INICIO'))return 'e-ini';if(ev.includes('RETORNO')||ev.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
 async function pull(url){const r=await fetch(url+'&_='+Date.now(),{cache:'no-store'});return parseCsv(await r.text());}
 let DATA_ISO = '';
@@ -165,7 +169,11 @@ async function carregar(){
     const lista=por[pl];
     const last=lista[lista.length-1];
     const temHoje=lista.some(e=>e.hoje);
-    if(!temHoje && ehFim(last.ev)) delete por[pl];
+    if(!temHoje){
+      if(ehFimReal(last.ev)) { delete por[pl]; return; }
+      if(ehFimLojaMacro(last.ev) && horaNum(last.hora)>=0 && horaNum(last.hora)<18*60) { delete por[pl]; return; }
+      if(!aindaNaRua(last.ev)) { delete por[pl]; return; }
+    }
   });
   const evsVivos=[]; Object.keys(por).forEach(pl=>por[pl].forEach(e=>evsVivos.push(e)));
 
@@ -204,7 +212,11 @@ function pintar(){
     const lista=por[pl];
     const last=lista[lista.length-1];
     const temHoje=lista.some(e=>e.hoje);
-    if(!temHoje && ehFim(last.ev)) delete por[pl];
+    if(!temHoje){
+      if(ehFimReal(last.ev)) { delete por[pl]; return; }
+      if(ehFimLojaMacro(last.ev) && horaNum(last.hora)>=0 && horaNum(last.hora)<18*60) { delete por[pl]; return; }
+      if(!aindaNaRua(last.ev)) { delete por[pl]; return; }
+    }
   });
   const evsVivos=[]; Object.keys(por).forEach(pl=>por[pl].forEach(e=>evsVivos.push(e)));
 
