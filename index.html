@@ -106,7 +106,9 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
 const CONTROLE='https://docs.google.com/spreadsheets/d/19ztgd86-ivwJveXp0Q_032P1fFaSuC9D9uaMJ4r6mP8/gviz/tq?tqx=out:csv&gid=1559964021';
 const TRUCKS='https://docs.google.com/spreadsheets/d/1TtgHyiAFdj1jCZGfm4VYzqw-4bEluQ34c95cYH_M6OA/gviz/tq?tqx=out:csv&gid=149639861';
 function agoraBRT(){return new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));}
-function isoOperacional(){const d=agoraBRT();if(d.getHours()<1)d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function isoOperacional(){const d=agoraBRT();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function isoOntem(){const d=agoraBRT();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function ehFim(ev){ev=String(ev||'').toUpperCase();return ev==='FIM_VIAGEM'||ev==='FIM_FINAL';}
 function br(iso){const[y,m,d]=iso.split('-');return d+'/'+m+'/'+y;}
 function parseCsv(text){const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const c=text[i];if(q){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++;}else q=false;}else cell+=c;}else if(c==='"')q=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}else if(c!=='\r')cell+=c;}if(cell||row.length){row.push(cell);rows.push(row);}return rows;}
 function extrairPlaca(v){const limpo=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');const m=limpo.match(/([A-Z]{3}\d[A-Z0-9]\d{2}|[A-Z]{3}\d{4})/);return m?m[1]:limpo;}
@@ -134,13 +136,16 @@ async function carregar(){
   let log=[],ctrl=[];
   try{log=await pull(TRUCKS);}catch(e){}
   try{ctrl=await pull(CONTROLE);}catch(e){}
+  const ontem=br(isoOntem());
+  const alvos=agoraBRT().getHours()<8 ? [alvo,ontem] : [alvo];
   const evs=[];
   for(let i=1;i<log.length;i++){
     const r=log[i]; if(!r||!r[0]) continue;
-    if(String(r[0]).indexOf(alvo)!==0) continue;
+    const dia=String(r[0]);
+    if(!alvos.some(a=>dia.indexOf(a)===0)) continue;
     const ev=String(r[1]||'').toUpperCase(); const pl=extrairPlaca(r[2]); if(!pl) continue;
     if(['CRIOU','AUTO_CRIOU','ATUALIZOU','SEM_LANC','IGNORA_CD','REFEICAO_SEM_MOT'].includes(ev)) continue;
-    evs.push({ev,placa:pl,hora:hh(r[3])||hh(r[0])});
+    evs.push({ev,placa:pl,hora:hh(r[3])||hh(r[0]),dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0});
   }
   const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase().replace(/"/g,''));
   let iData=h.indexOf('DATA'); if(iData<0) iData=0;
@@ -151,13 +156,21 @@ async function carregar(){
   const mapaCtrl={};
   for(let i=1;i<ctrl.length;i++){
     const r=ctrl[i]; if(!r) continue;
-    if(!dataBate(r[iData],iso)) continue;
+    if(!(dataBate(r[iData],iso)||(agoraBRT().getHours()<8 && dataBate(r[iData],isoOntem())))) continue;
     const pl=extrairPlaca(r[iV]); if(!pl) continue;
     mapaCtrl[pl]={op:String(r[iOp]||'').trim().toUpperCase(),mot:String(r[iMot]||'').trim(),dest:iDest>=0?String(r[iDest]||'').trim():''};
   }
   const por={}; evs.forEach(e=>{(por[e.placa]=por[e.placa]||[]).push(e);});
-  const placas=[...new Set([...Object.keys(por),...Object.keys(mapaCtrl)])].sort((a,b)=>((mapaCtrl[a]||{}).mot||a).localeCompare((mapaCtrl[b]||{}).mot||b,'pt-BR'));
-  CACHE={placas,evs,mapaCtrl};
+  Object.keys(por).forEach(pl=>{
+    const lista=por[pl];
+    const last=lista[lista.length-1];
+    const temHoje=lista.some(e=>e.hoje);
+    if(!temHoje && ehFim(last.ev)) delete por[pl];
+  });
+  const evsVivos=[]; Object.keys(por).forEach(pl=>por[pl].forEach(e=>evsVivos.push(e)));
+
+  const placas=Object.keys(por).sort((a,b)=>((mapaCtrl[a]||{}).mot||a).localeCompare((mapaCtrl[b]||{}).mot||b,'pt-BR'));
+  CACHE={placas,evs:evsVivos||evs,mapaCtrl};
   pintar();
 }
 
@@ -187,9 +200,17 @@ function pintar(){
   const evs=(CACHE.evs||[]).filter(e => passaOp(mapaCtrl[e.placa]));
   const placas=(CACHE.placas||[]).filter(pl => passaOp(mapaCtrl[pl]));
   const por={}; evs.forEach(e=>{(por[e.placa]=por[e.placa]||[]).push(e);});
+  Object.keys(por).forEach(pl=>{
+    const lista=por[pl];
+    const last=lista[lista.length-1];
+    const temHoje=lista.some(e=>e.hoje);
+    if(!temHoje && ehFim(last.ev)) delete por[pl];
+  });
+  const evsVivos=[]; Object.keys(por).forEach(pl=>por[pl].forEach(e=>evsVivos.push(e)));
+
   let viagem=0,loja=0,bau=0,fim=0,alm=0; const linhas=[];
   placas.forEach(pl=>{
-    const lista=por[pl]||[]; if(!lista.length && !(mapaCtrl[pl]||{}).mot) return;
+    const lista=por[pl]||[]; if(!lista.length) return;
     const last=lista[lista.length-1]||{};
     const [st,cls]=lista.length?statusDe(lista):['NO CONTROLE','p-run'];
     if(st==='EM VIAGEM'||st==='RETORNO CD') viagem++;
