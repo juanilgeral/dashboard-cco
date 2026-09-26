@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
+<!-- CCO_VER:20260926a -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -297,16 +298,17 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+const CCO_VER='20260926a';
 async function checarGithub(){
   try{
-    const url=location.href.split('#')[0];
-    const sep=url.indexOf('?')>=0?'&':'?';
-    const txt=await (await fetch(url+sep+'_gh='+Date.now(),{cache:'no-store'})).text();
-    const h=await hashTxt(txt);
-    if(!window.__CCO_HASH){ window.__CCO_HASH=h; return; }
-    if(h!==window.__CCO_HASH){
-      window.__CCO_HASH=h;
-      /* sem reload: evita piscar. dados já atualizam a cada 10s */
+    const base=location.href.split('#')[0].split('?')[0];
+    const txt=await (await fetch(base+(base.slice(-1)==='/'?'index.html':'')+'?_gh='+Date.now(),{cache:'no-store'})).text();
+    const m=txt.match(/CCO_VER[:'"\s=]+([0-9a-zA-Z]+)/);
+    const rem=m?m[1]:'';
+    if(rem && rem!==CCO_VER){
+      const c=document.getElementById('swapCover');
+      if(c) c.style.display='block';
+      location.reload();
     }
   }catch(e){}
 }
