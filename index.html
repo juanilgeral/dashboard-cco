@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260928a -->
+<!-- CCO_VER:20260930a -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -164,7 +164,7 @@ async function carregar(){
     const dia=String(r[0]);
     if(!alvos.some(a=>dia.indexOf(a)===0)) continue;
     const ev=String(r[1]||'').toUpperCase(); const pl=extrairPlaca(r[2]); if(!pl) continue;
-    if(['CRIOU','AUTO_CRIOU','ATUALIZOU','SEM_LANC','IGNORA_CD','REFEICAO_SEM_MOT'].includes(ev)) continue;
+    if(['CRIOU','AUTO_CRIOU','ATUALIZOU','SEM_LANC','IGNORA_CD','REFEICAO_SEM_MOT','REFEICAO_AUTO','REFEICAO_JA_OK','REFEICAO_ERRO'].includes(ev)) continue;
     evs.push({ev,placa:pl,hora:hh(r[3])||hh(r[0]),det:String(r[3]||''),dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0});
   }
   const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase().replace(/"/g,''));
@@ -294,7 +294,7 @@ function pintar(){
   const fd=document.getElementById('feed');
   const feedWrap='<div class="feed-track">'+feed+feed+'</div>';
   if(fd && fd.dataset.sig!==feed){ fd.dataset.sig=feed; fd.innerHTML=feedWrap; }
-  const ticks=recent.filter(e=>['INICIO_VIAGEM','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','RETORNO','PARADA_REFEICAO','FIM_VIAGEM','FIM_FINAL'].includes(e.ev));
+  const ticks=recent.filter(e=>['INICIO_VIAGEM','REINICIO_VIAGEM','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','RETORNO','PARADA_REFEICAO','FIM_VIAGEM','FIM_FINAL'].includes(e.ev));
   const tickHtml=ticks.map(e=>{const info=mapaCtrl[e.placa]||{};return '<span class="tick '+clsEv(e.ev)+'"><time>'+e.hora+'</time><b>'+rotuloEv(e.ev,e.det)+'</b> '+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</span>';}).join('');
   const tk=document.getElementById('ticker');
   const next=(tickHtml+tickHtml)||'<span class="tick">Aguardando eventos…</span>';
@@ -305,7 +305,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260928a';
+const CCO_VER='20260930a';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
