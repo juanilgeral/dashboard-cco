@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930d -->
+<!-- CCO_VER:20260930e -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -107,8 +107,8 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
         </table>
         <div class="div-hist">Histórico do dia · finalizados</div>
         <table class="tbl tbl-hist">
-          <thead><tr><th>Placa</th><th>OP</th><th>Motorista</th><th>Destino</th><th>Evento</th><th>Hora</th><th>Status</th></tr></thead>
-          <tbody id="tbodyHist"><tr><td colspan="7" class="empty">Nenhuma viagem encerrada ainda</td></tr></tbody>
+          <thead><tr><th>Placa</th><th>OP</th><th>Motorista</th><th>Destino</th><th>Início</th><th>Abert. baú</th><th>Fecha. baú</th><th>Fim</th></tr></thead>
+          <tbody id="tbodyHist"><tr><td colspan="8" class="empty">Nenhuma viagem encerrada ainda</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -253,12 +253,32 @@ function loadHist(iso){
 function saveHist(iso, arr){
   try{localStorage.setItem('cco_hist_'+iso, JSON.stringify(arr.slice(-80)));}catch(e){}
 }
+function horaEv(lista, nomes, depoisDe){
+  const ok=nomes.map(evNome);
+  let ini=depoisDe|| -1;
+  for(let i=0;i<(lista||[]).length;i++){
+    if(i<=ini) continue;
+    if(ok.includes(evNome(lista[i].ev))) return lista[i].hora||'';
+  }
+  return '';
+}
 function registrarHist(pl, info, lista){
   const fims=(lista||[]).filter(e=>e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL');
   if(!fims.length) return;
   const lastF=fims[fims.length-1];
-  const dest=destDoDetalhe(lastF.det)||destDaViagem(info,lista)||'';
-  const rec={placa:pl,op:info.op||'',mot:info.mot||'',dest:dest,ev:lastF.ev,hora:lastF.hora||'',dia:DATA_ISO};
+  const iFim=(lista||[]).lastIndexOf(lastF);
+  let iIni=-1;
+  (lista||[]).forEach((e,i)=>{ if((e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM') && i<iFim) iIni=i; });
+  const trecho=(lista||[]).slice(Math.max(0,iIni), iFim+1);
+  const dest=destDoDetalhe(lastF.det)||destDoDetalhe((trecho.slice().reverse().find(e=>destDoDetalhe(e.det))||{}).det)||destDaViagem(info,lista)||'';
+  const rec={
+    placa:pl,op:info.op||'',mot:info.mot||'',dest:dest,
+    ev:lastF.ev,hora:lastF.hora||'',
+    ini:horaEv(trecho,['INICIO_VIAGEM','REINICIO_VIAGEM']),
+    bau:horaEv(trecho,['ABERTURA_BAU','INICIO_DESCARREGAMENTO']),
+    fecha:horaEv(trecho,['FECHAMENTO_BAU']),
+    dia:DATA_ISO
+  };
   const hist=loadHist(DATA_ISO);
   if(hist.some(h=>histKey(h)===histKey(rec))) return;
   hist.push(rec); saveHist(DATA_ISO, hist);
@@ -333,7 +353,7 @@ function pintar(){
   if(tb && tb.innerHTML!==html) tb.innerHTML=html;
   const hist=loadHist(DATA_ISO).filter(h=>passaOp({op:h.op})).slice().reverse();
   const hb=document.getElementById('tbodyHist');
-  const histHtml=hist.map(h=>'<tr><td style="font-weight:800">'+h.placa+'</td><td>'+(h.op?'<span class="pill '+opClass(h.op)+'">'+h.op+'</span>':'—')+'</td><td>'+(h.mot||'—')+'</td><td>'+(h.dest||'—')+'</td><td>'+rotuloEv(h.ev,'')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.hora||'—')+'</td><td><span class="pill p-off">ENCERRADO</span></td></tr>').join('')||'<tr><td colspan="7" class="empty">Nenhuma viagem encerrada ainda</td></tr>';
+  const histHtml=hist.map(h=>'<tr><td style="font-weight:800">'+h.placa+'</td><td>'+(h.op?'<span class="pill '+opClass(h.op)+'">'+h.op+'</span>':'—')+'</td><td>'+(h.mot||'—')+'</td><td>'+(h.dest||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.ini||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.bau||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.fecha||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.hora||'—')+'</td></tr>').join('')||'<tr><td colspan="8" class="empty">Nenhuma viagem encerrada ainda</td></tr>';
   if(hb && hb.innerHTML!==histHtml) hb.innerHTML=histHtml;
   fim=Math.max(fim, hist.length);
 
@@ -363,7 +383,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930d';
+const CCO_VER='20260930e';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
