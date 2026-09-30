@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930a -->
+<!-- CCO_VER:20260930b -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -135,6 +135,13 @@ function hh(v){const m=String(v||'').match(/(\d{1,2}:\d{2})/);return m?m[1].padS
 function dataBate(cell,iso){const p=String(iso||'').split('-');if(p.length!==3)return false;const alvos=[p[2]+'/'+p[1]+'/'+p[0],p[2]+'/'+p[1]+'/'+p[0].slice(2),iso];const d=String(cell||'').trim();return alvos.some(a=>d===a||d.indexOf(a)===0);}
 function opClass(op){const o=String(op||'').toUpperCase();if(o==='TL')return 'p-tl';if(o==='LS')return 'p-ls';if(o==='CV')return 'p-cv';if(o==='HT')return 'p-ht';return 'p-run';}
 function statusDe(evs){const e=(evs[evs.length-1]||{}).ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE'||ehFimLojaMacro(e))return['NA LOJA','p-loja'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(ehFimReal(e)||e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM')return['EM VIAGEM','p-ok'];return[e||'SINAL','p-run'];}
+function destDaViagem(info, lista){
+  const dests=(info&&info.dests&&info.dests.length)?info.dests:((info&&info.dest)?[info.dest]:[]);
+  if(!dests.length) return '';
+  const nFim=(lista||[]).filter(e=>e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL').length;
+  const i=Math.min(nFim, dests.length-1);
+  return dests[i]||dests[0]||'';
+}
 function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(e==='REINICIO_VIAGEM'||d.indexOf('REINICIO')>=0)return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM';return String(ev||'').replace(/_/g,' ');}
 function clsEv(ev){if(ev.includes('BAU')||ev.includes('DESCARREG'))return 'e-bau';if(ev.includes('FIM'))return 'e-fim';if(ev.includes('INICIO'))return 'e-ini';if(ev.includes('RETORNO')||ev.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
 async function pull(url){const r=await fetch(url+'&_='+Date.now(),{cache:'no-store'});return parseCsv(await r.text());}
@@ -178,13 +185,14 @@ async function carregar(){
     const r=ctrl[i]; if(!r) continue;
     if(!(dataBate(r[iData],iso)||(agoraBRT().getHours()<8 && dataBate(r[iData],isoOntem())))) continue;
     const pl=extrairPlaca(r[iV]); if(!pl) continue;
-    const nxt={op:String(r[iOp]||'').trim().toUpperCase(),mot:String(r[iMot]||'').trim(),dest:iDest>=0?String(r[iDest]||'').trim():''};
+    const dest=iDest>=0?String(r[iDest]||'').trim():'';
+    const nxt={op:String(r[iOp]||'').trim().toUpperCase(),mot:String(r[iMot]||'').trim(),dest:dest,dests: dest?[dest]:[]};
     const prev=mapaCtrl[pl];
     if(!prev) mapaCtrl[pl]=nxt;
     else {
       if(nxt.op) prev.op=nxt.op;
       if(nxt.mot) prev.mot=nxt.mot;
-      if(nxt.dest) prev.dest=nxt.dest;
+      if(dest){ prev.dests=prev.dests||[]; prev.dests.push(dest); prev.dest=dest; }
     }
   }
   const por={}; evs.forEach(e=>{(por[e.placa]=por[e.placa]||[]).push(e);});
@@ -274,7 +282,8 @@ function pintar(){
     if(st==='BAÚ ABERTO'){bau++;loja++;}
     if(st==='FIM') fim++; if(st==='ALMOÇO') alm++;
     const info=mapaCtrl[pl]||{};
-    linhas.push('<tr><td style="font-weight:800">'+pl+'</td><td>'+(info.op?'<span class="pill '+opClass(info.op)+'">'+info.op+'</span>':'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+(info.dest||'—')+'</td><td>'+(last.ev?rotuloEv(last.ev,last.det):'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(last.hora||'—')+'</td><td><span class="pill '+cls+'">'+st+'</span></td></tr>');
+    const destNow=destDaViagem(info,lista);
+    linhas.push('<tr><td style="font-weight:800">'+pl+'</td><td>'+(info.op?'<span class="pill '+opClass(info.op)+'">'+info.op+'</span>':'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+(destNow||'—')+'</td><td>'+(last.ev?rotuloEv(last.ev,last.det):'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(last.hora||'—')+'</td><td><span class="pill '+cls+'">'+st+'</span></td></tr>');
   });
   const tb=document.getElementById('tbody');
   const html=linhas.join('')||'<tr><td colspan="7" class="empty">Aguardando saídas</td></tr>';
@@ -305,7 +314,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930a';
+const CCO_VER='20260930b';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
