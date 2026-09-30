@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930g -->
+<!-- CCO_VER:20260930h -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -145,7 +145,7 @@ function extrairPlaca(v){const limpo=String(v||'').toUpperCase().replace(/[^A-Z0
 function hh(v){const m=String(v||'').match(/(\d{1,2}:\d{2})/);return m?m[1].padStart(5,'0'):'';}
 function dataBate(cell,iso){const p=String(iso||'').split('-');if(p.length!==3)return false;const alvos=[p[2]+'/'+p[1]+'/'+p[0],p[2]+'/'+p[1]+'/'+p[0].slice(2),iso];const d=String(cell||'').trim();return alvos.some(a=>d===a||d.indexOf(a)===0);}
 function opClass(op){const o=String(op||'').toUpperCase();if(o==='TL')return 'p-tl';if(o==='LS')return 'p-ls';if(o==='CV')return 'p-cv';if(o==='HT')return 'p-ht';return 'p-run';}
-function statusDe(evs){const e=(evs[evs.length-1]||{}).ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE'||ehFimLojaMacro(e))return['NA LOJA','p-loja'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(ehFimReal(e)||e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM')return['EM VIAGEM','p-ok'];return[e||'SINAL','p-run'];}
+function statusDe(evs, op){const last=evs[evs.length-1]||{};const e=last.ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE'||ehFimLojaMacro(e))return['NA LOJA','p-loja'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if((e==='FIM_VIAGEM'||e==='FIM_FINAL') && opTrocaMacro(op) && !destEhCd(destDoDetalhe(last.det))) return destEhCd((evs.map(x=>x.det).join(' ')))?['RETORNO CD','p-run']:['NA LOJA','p-loja'];if(ehFimReal(e)||e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM')return['EM VIAGEM','p-ok'];return[e||'SINAL','p-run'];}
 function destDoDetalhe(det){
   let t=String(det||'').replace(/\n/g,' ').replace(/SENHA\s*:\s*\S+/gi,' ').replace(/\s+/g,' ').trim();
   let m=t.match(/DESTINO\s*:\s*([^|]+)/i);
@@ -178,6 +178,18 @@ function destPreferido(info, lista, last){
     return 'CD / BASE';
   }
   return destDaViagem(info, lista);
+}
+function destEhCd(d){return /\bCD\b|BASE|JUANIL|GARAGEM|QUEIMAD|HORTIFRUTI/.test(String(d||'').toUpperCase());}
+function opTrocaMacro(op){const o=String(op||'').toUpperCase(); return o==='CV'||o==='LS'||o==='HT';}
+function fimEhFinal(op, dest, ev, lista){
+  ev=evNome(ev);
+  if(ehFimLojaMacro(ev)) return false;
+  if(ev!=='FIM_VIAGEM' && ev!=='FIM_FINAL') return false;
+  if(!opTrocaMacro(op)) return ev==='FIM_VIAGEM'||ev==='FIM_FINAL';
+  if(destEhCd(dest)) return true;
+  const blob=(lista||[]).map(e=>String(e.det||'')+' '+e.ev).join(' ');
+  if(/DESTINO\s*:\s*CD|RETORNANDO AO CD|IGNORA_CD/i.test(blob) && destEhCd(blob)) return false;
+  return destEhCd(dest);
 }
 function destDaViagem(info, lista){
   const dests=(info&&info.dests&&info.dests.length)?info.dests:((info&&info.dest)?[info.dest]:[]);
@@ -286,6 +298,8 @@ function registrarHist(pl, info, lista){
   const fims=(lista||[]).filter(e=>e.ev==='FIM_VIAGEM');
   if(!fims.length) return;
   const lastF=fims[fims.length-1];
+  const destChk=destPreferido(info,lista,lastF);
+  if(!fimEhFinal(info.op, destChk, lastF.ev, lista)) return;
   const iFim=(lista||[]).lastIndexOf(lastF);
   let iIni=-1;
   (lista||[]).forEach((e,i)=>{ if((e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM') && i<iFim) iIni=i; });
@@ -357,9 +371,10 @@ function pintar(){
   placas.forEach(pl=>{
     const lista=por[pl]||[]; if(!lista.length) return;
     const last=lista[lista.length-1]||{};
-    const enc=placaEncerrada(lista,(mapaCtrl[pl]||{}).dest) || ehFimReal(last.ev);
-    if(enc && !aindaNaRua(last.ev)) return;
-    const [st,cls]=lista.length?statusDe(lista):['NO CONTROLE','p-run'];
+    const destNow0=destPreferido(mapaCtrl[pl]||{},lista,last);
+    const final=fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista);
+    if(final && !aindaNaRua(last.ev)) return;
+    const [st,cls]=lista.length?statusDe(lista,(mapaCtrl[pl]||{}).op):['NO CONTROLE','p-run'];
     if(st==='EM VIAGEM'||st==='RETORNO CD') viagem++;
     if(st==='NA LOJA') loja++;
     if(st==='BAÚ ABERTO'){bau++;loja++;}
@@ -371,7 +386,7 @@ function pintar(){
   const tb=document.getElementById('tbody');
   const html=linhas.join('')||'<tr><td colspan="7" class="empty">Aguardando saídas</td></tr>';
   if(tb && tb.innerHTML!==html) tb.innerHTML=html;
-  const histRaw=loadHist(DATA_ISO).filter(h=>passaOp({op:h.op}));
+  const histRaw=loadHist(DATA_ISO).filter(h=>passaOp({op:h.op}) && !(opTrocaMacro(h.op) && !destEhCd(h.dest)));
   const seen={};
   histRaw.forEach(h=>{
     const k=histKey(h);
@@ -412,7 +427,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930g';
+const CCO_VER='20260930h';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
