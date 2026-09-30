@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930f -->
+<!-- CCO_VER:20260930g -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -182,7 +182,7 @@ function destPreferido(info, lista, last){
 function destDaViagem(info, lista){
   const dests=(info&&info.dests&&info.dests.length)?info.dests:((info&&info.dest)?[info.dest]:[]);
   if(!dests.length) return '';
-  const nFim=(lista||[]).filter(e=>e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL').length;
+  const nFim=(lista||[]).filter(e=>e.ev==='FIM_VIAGEM').length;
   const i=Math.min(nFim, dests.length-1);
   return dests[i]||dests[0]||'';
 }
@@ -266,7 +266,7 @@ async function carregar(){
 let FILTRO_OP = '';
 try{ FILTRO_OP = localStorage.getItem('cco_filtro_op') || ''; }catch(e){}
 let CACHE = {placas:[], evs:[], mapaCtrl:{}};
-function histKey(o){return [o.placa,o.hora,o.ev,o.dest].join('|');}
+function histKey(o){return [o.placa,o.hora].join('|');}
 function loadHist(iso){
   try{const a=JSON.parse(localStorage.getItem('cco_hist_'+iso)||'[]'); return Array.isArray(a)?a:[];}catch(e){return [];}
 }
@@ -283,7 +283,7 @@ function horaEv(lista, nomes, depoisDe){
   return '';
 }
 function registrarHist(pl, info, lista){
-  const fims=(lista||[]).filter(e=>e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL');
+  const fims=(lista||[]).filter(e=>e.ev==='FIM_VIAGEM');
   if(!fims.length) return;
   const lastF=fims[fims.length-1];
   const iFim=(lista||[]).lastIndexOf(lastF);
@@ -371,7 +371,16 @@ function pintar(){
   const tb=document.getElementById('tbody');
   const html=linhas.join('')||'<tr><td colspan="7" class="empty">Aguardando saídas</td></tr>';
   if(tb && tb.innerHTML!==html) tb.innerHTML=html;
-  const hist=loadHist(DATA_ISO).filter(h=>passaOp({op:h.op})).slice().reverse();
+  const histRaw=loadHist(DATA_ISO).filter(h=>passaOp({op:h.op}));
+  const seen={};
+  histRaw.forEach(h=>{
+    const k=histKey(h);
+    const cur=seen[k];
+    const score=(h.ini?2:0)+(/CD|GARAGEM|QUEIMAD|BASE/i.test(h.dest||'')?3:0)+(h.dest&&!/PETROPOLIS|PETRÓPOLIS/i.test(h.dest)?1:0);
+    const old=cur?((cur.ini?2:0)+(/CD|GARAGEM|QUEIMAD|BASE/i.test(cur.dest||'')?3:0)): -1;
+    if(!cur || score>=old) seen[k]=h;
+  });
+  const hist=Object.values(seen).sort((a,b)=>(b.hora||'').localeCompare(a.hora||'')); saveHist(DATA_ISO, hist.slice().reverse());
   const hb=document.getElementById('tbodyHist');
   const histHtml=hist.map(h=>'<tr><td style="font-weight:800">'+h.placa+'</td><td>'+(h.op?'<span class="pill '+opClass(h.op)+'">'+h.op+'</span>':'—')+'</td><td>'+(h.mot||'—')+'</td><td>'+(h.dest||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.ini||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.bau||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.fecha||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.hora||'—')+'</td></tr>').join('')||'<tr><td colspan="8" class="empty">Nenhuma viagem encerrada ainda</td></tr>';
   if(hb && hb.innerHTML!==histHtml) hb.innerHTML=histHtml;
@@ -403,7 +412,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930f';
+const CCO_VER='20260930g';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
