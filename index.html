@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930b -->
+<!-- CCO_VER:20260930c -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -135,6 +135,19 @@ function hh(v){const m=String(v||'').match(/(\d{1,2}:\d{2})/);return m?m[1].padS
 function dataBate(cell,iso){const p=String(iso||'').split('-');if(p.length!==3)return false;const alvos=[p[2]+'/'+p[1]+'/'+p[0],p[2]+'/'+p[1]+'/'+p[0].slice(2),iso];const d=String(cell||'').trim();return alvos.some(a=>d===a||d.indexOf(a)===0);}
 function opClass(op){const o=String(op||'').toUpperCase();if(o==='TL')return 'p-tl';if(o==='LS')return 'p-ls';if(o==='CV')return 'p-cv';if(o==='HT')return 'p-ht';return 'p-run';}
 function statusDe(evs){const e=(evs[evs.length-1]||{}).ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE'||ehFimLojaMacro(e))return['NA LOJA','p-loja'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(ehFimReal(e)||e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM')return['EM VIAGEM','p-ok'];return[e||'SINAL','p-run'];}
+function destDoDetalhe(det){
+  let t=String(det||'').replace(/SENHA\s*:\s*\S+/gi,' ').replace(/\s+/g,' ').trim();
+  let m=t.match(/DESTINO\s*:\s*(.+)$/i);
+  if(m){
+    let d=m[1].replace(/SENHA\s*:\s*\S+/gi,'').replace(/\|.*$/,'').trim();
+    d=d.replace(/^(INICIO|REINICIO)\s+DE\s+VIAGEM:?/i,'').trim();
+    if(d) return d;
+  }
+  m=t.match(/NOME\s*:\s*([^|]+)$/i);
+  if(m) return m[1].replace(/SENHA\s*:\s*\S+/gi,'').trim();
+  if(/retornando ao cd|retornando à base|retornando a base/i.test(t)) return 'CD / BASE';
+  return '';
+}
 function destDaViagem(info, lista){
   const dests=(info&&info.dests&&info.dests.length)?info.dests:((info&&info.dest)?[info.dest]:[]);
   if(!dests.length) return '';
@@ -282,7 +295,7 @@ function pintar(){
     if(st==='BAÚ ABERTO'){bau++;loja++;}
     if(st==='FIM') fim++; if(st==='ALMOÇO') alm++;
     const info=mapaCtrl[pl]||{};
-    const destNow=destDaViagem(info,lista);
+    const destNow=destDoDetalhe(last.det)||destDoDetalhe((lista.slice().reverse().find(e=>destDoDetalhe(e.det))||{}).det)||destDaViagem(info,lista);
     linhas.push('<tr><td style="font-weight:800">'+pl+'</td><td>'+(info.op?'<span class="pill '+opClass(info.op)+'">'+info.op+'</span>':'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+(destNow||'—')+'</td><td>'+(last.ev?rotuloEv(last.ev,last.det):'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(last.hora||'—')+'</td><td><span class="pill '+cls+'">'+st+'</span></td></tr>');
   });
   const tb=document.getElementById('tbody');
@@ -314,7 +327,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930b';
+const CCO_VER='20260930c';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
