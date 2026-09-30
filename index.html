@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930c -->
+<!-- CCO_VER:20260930d -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -51,6 +51,10 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
 .feed-track{display:block;animation:feedUp 22s linear infinite}
 .feed:hover .feed-track{animation-play-state:paused}
 @keyframes feedUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+
+.div-hist{margin:14px 12px 0;padding:10px 0 8px;border-top:1px solid rgba(0,229,255,.28);color:var(--amber);font-family:Orbitron,sans-serif;font-size:clamp(.72rem,1vw,.88rem);letter-spacing:.16em;text-transform:uppercase}
+.tbl-hist td{opacity:.92}
+
 .tbl{width:100%;border-collapse:collapse;font-size:clamp(1.02rem,1.4vw,1.22rem)}
 .tbl th{text-align:left;font-size:.82rem;letter-spacing:.12em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0b1220}
 .tbl td{padding:9px 10px;color:#f2f7ff;font-weight:600;border-bottom:1px solid rgba(255,255,255,.04)}
@@ -96,10 +100,17 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
   <div class="grid">
     <div class="panel">
       <h3>Frota em movimento · Controle + Trucks</h3>
-      <div class="scroll"><table class="tbl">
-        <thead><tr><th>Placa</th><th>OP</th><th>Motorista</th><th>Destino</th><th>Último evento</th><th>Hora</th><th>Status</th></tr></thead>
-        <tbody id="tbody"><tr><td colspan="7" class="empty">Sincronizando…</td></tr></tbody>
-      </table></div>
+      <div class="scroll">
+        <table class="tbl">
+          <thead><tr><th>Placa</th><th>OP</th><th>Motorista</th><th>Destino</th><th>Último evento</th><th>Hora</th><th>Status</th></tr></thead>
+          <tbody id="tbody"><tr><td colspan="7" class="empty">Sincronizando…</td></tr></tbody>
+        </table>
+        <div class="div-hist">Histórico do dia · finalizados</div>
+        <table class="tbl tbl-hist">
+          <thead><tr><th>Placa</th><th>OP</th><th>Motorista</th><th>Destino</th><th>Evento</th><th>Hora</th><th>Status</th></tr></thead>
+          <tbody id="tbodyHist"><tr><td colspan="7" class="empty">Nenhuma viagem encerrada ainda</td></tr></tbody>
+        </table>
+      </div>
     </div>
     <div class="panel"><h3>Radar de eventos</h3><div class="feed" id="feed"><div class="empty">Aguardando pulso…</div></div></div>
   </div>
@@ -235,6 +246,24 @@ async function carregar(){
 let FILTRO_OP = '';
 try{ FILTRO_OP = localStorage.getItem('cco_filtro_op') || ''; }catch(e){}
 let CACHE = {placas:[], evs:[], mapaCtrl:{}};
+function histKey(o){return [o.placa,o.hora,o.ev,o.dest].join('|');}
+function loadHist(iso){
+  try{const a=JSON.parse(localStorage.getItem('cco_hist_'+iso)||'[]'); return Array.isArray(a)?a:[];}catch(e){return [];}
+}
+function saveHist(iso, arr){
+  try{localStorage.setItem('cco_hist_'+iso, JSON.stringify(arr.slice(-80)));}catch(e){}
+}
+function registrarHist(pl, info, lista){
+  const fims=(lista||[]).filter(e=>e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL');
+  if(!fims.length) return;
+  const lastF=fims[fims.length-1];
+  const dest=destDoDetalhe(lastF.det)||destDaViagem(info,lista)||'';
+  const rec={placa:pl,op:info.op||'',mot:info.mot||'',dest:dest,ev:lastF.ev,hora:lastF.hora||'',dia:DATA_ISO};
+  const hist=loadHist(DATA_ISO);
+  if(hist.some(h=>histKey(h)===histKey(rec))) return;
+  hist.push(rec); saveHist(DATA_ISO, hist);
+}
+
 function aplicarFiltro(op){
   FILTRO_OP = op || '';
   try{ localStorage.setItem('cco_filtro_op', FILTRO_OP); }catch(e){}
@@ -280,15 +309,16 @@ function pintar(){
   Object.keys(por).forEach(pl=>{
     const lista=por[pl]||[];
     const last=lista[lista.length-1];
-    if(last && aindaNaRua(last.ev) && !placaEncerrada(lista,(mapaCtrl[pl]||{}).dest)) algumNaRua=true;
+    const info=mapaCtrl[pl]||{};
+    registrarHist(pl, info, lista);
+    if(last && aindaNaRua(last.ev) && !placaEncerrada(lista,info.dest)) algumNaRua=true;
   });
   let viagem=0,loja=0,bau=0,fim=0,alm=0; const linhas=[];
-  if(!algumNaRua){
-    placas.length=0;
-  }
   placas.forEach(pl=>{
     const lista=por[pl]||[]; if(!lista.length) return;
     const last=lista[lista.length-1]||{};
+    const enc=placaEncerrada(lista,(mapaCtrl[pl]||{}).dest) || ehFimReal(last.ev);
+    if(enc && !aindaNaRua(last.ev)) return;
     const [st,cls]=lista.length?statusDe(lista):['NO CONTROLE','p-run'];
     if(st==='EM VIAGEM'||st==='RETORNO CD') viagem++;
     if(st==='NA LOJA') loja++;
@@ -301,6 +331,12 @@ function pintar(){
   const tb=document.getElementById('tbody');
   const html=linhas.join('')||'<tr><td colspan="7" class="empty">Aguardando saídas</td></tr>';
   if(tb && tb.innerHTML!==html) tb.innerHTML=html;
+  const hist=loadHist(DATA_ISO).filter(h=>passaOp({op:h.op})).slice().reverse();
+  const hb=document.getElementById('tbodyHist');
+  const histHtml=hist.map(h=>'<tr><td style="font-weight:800">'+h.placa+'</td><td>'+(h.op?'<span class="pill '+opClass(h.op)+'">'+h.op+'</span>':'—')+'</td><td>'+(h.mot||'—')+'</td><td>'+(h.dest||'—')+'</td><td>'+rotuloEv(h.ev,'')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.hora||'—')+'</td><td><span class="pill p-off">ENCERRADO</span></td></tr>').join('')||'<tr><td colspan="7" class="empty">Nenhuma viagem encerrada ainda</td></tr>';
+  if(hb && hb.innerHTML!==histHtml) hb.innerHTML=histHtml;
+  fim=Math.max(fim, hist.length);
+
   const ativo = viagem+loja+bau+alm;
   const sit=document.getElementById('situacao');
   if(sit){
@@ -327,7 +363,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930c';
+const CCO_VER='20260930d';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
