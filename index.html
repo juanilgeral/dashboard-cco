@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930r -->
+<!-- CCO_VER:20260930s -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -48,7 +48,7 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
 .scroll{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .panel h3{font-family:Orbitron,sans-serif;font-size:clamp(.78rem,1.05vw,.95rem);letter-spacing:.14em;color:var(--cyan);padding:10px 12px;border-bottom:1px solid var(--line)}
 .feed{flex:1;min-height:0;overflow:hidden;position:relative}
-.feed-track{display:block;animation:feedUp 22s linear infinite}
+.feed-track{display:block;animation:feedUp 80s linear infinite}
 .feed:hover .feed-track{animation-play-state:paused}
 @keyframes feedUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 
@@ -292,13 +292,13 @@ async function carregar(){
   const evsVivos=[]; Object.keys(por).forEach(pl=>por[pl].forEach(e=>evsVivos.push(e)));
 
   const placas=Object.keys(por).sort((a,b)=>((mapaCtrl[a]||{}).mot||a).localeCompare((mapaCtrl[b]||{}).mot||b,'pt-BR'));
-  CACHE={placas,evs:evsVivos||evs,mapaCtrl};
+  CACHE={placas,evs:evsVivos||evs,todos:evs,mapaCtrl};
   pintar();
 }
 
 let FILTRO_OP = '';
 try{ FILTRO_OP = localStorage.getItem('cco_filtro_op') || ''; }catch(e){}
-let CACHE = {placas:[], evs:[], mapaCtrl:{}};
+let CACHE = {placas:[], evs:[], todos:[], mapaCtrl:{}};
 function histKey(o){return [o.placa,o.hora].join('|');}
 function loadHist(iso){
   try{const a=JSON.parse(localStorage.getItem('cco_hist_'+iso)||'[]'); return Array.isArray(a)?a:[];}catch(e){return [];}
@@ -448,12 +448,13 @@ function pintar(){
   const kpis=document.getElementById('kpis');
   var kpiHtml='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+evs.length+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
   if(kpis && kpis.dataset.sig!==kpiHtml){ kpis.dataset.sig=kpiHtml; kpis.innerHTML=kpiHtml; }
-  const recent=evs.slice(-40).reverse();
+  const todos=(CACHE.todos||evs).filter(e => passaOp(mapaCtrl[e.placa]));
+  const recent=todos.slice().reverse();
   const feed=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><span class="pl">'+e.placa+'</span><time>'+(e.hora||'--:--')+'</time><div><b>'+rotuloEv(e.ev,e.det)+'</b><small>'+(info.mot||'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Aguardando eventos</div>';
   const fd=document.getElementById('feed');
   const feedWrap='<div class="feed-track">'+feed+feed+'</div>';
   if(fd && fd.dataset.sig!==feed){ fd.dataset.sig=feed; fd.innerHTML=feedWrap; }
-  const ticks=recent.filter(e=>['INICIO_VIAGEM','REINICIO_VIAGEM','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','RETORNO','PARADA_REFEICAO','FIM_VIAGEM','FIM_FINAL'].includes(e.ev));
+  const ticks=recent;
   const tickHtml=ticks.map(e=>{const info=mapaCtrl[e.placa]||{};return '<span class="tick '+clsEv(e.ev)+'"><time>'+e.hora+'</time><b>'+rotuloEv(e.ev,e.det)+'</b> '+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</span>';}).join('');
   const tk=document.getElementById('ticker');
   const next=(tickHtml+tickHtml)||'<span class="tick">Aguardando eventos…</span>';
@@ -464,7 +465,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930r';
+const CCO_VER='20260930s';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
