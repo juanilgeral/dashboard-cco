@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261001c -->
+<!-- CCO_VER:20261001d -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -151,7 +151,7 @@ function extrairPlaca(v){const limpo=String(v||'').toUpperCase().replace(/[^A-Z0
 function hh(v){const m=String(v||'').match(/(\d{1,2}:\d{2})/);return m?m[1].padStart(5,'0'):'';}
 function dataBate(cell,iso){const p=String(iso||'').split('-');if(p.length!==3)return false;const alvos=[p[2]+'/'+p[1]+'/'+p[0],p[2]+'/'+p[1]+'/'+p[0].slice(2),iso];const d=String(cell||'').trim();return alvos.some(a=>d===a||d.indexOf(a)===0);}
 function opClass(op){const o=String(op||'').toUpperCase();if(o==='TL')return 'p-tl';if(o==='LS')return 'p-ls';if(o==='CV')return 'p-cv';if(o==='HT')return 'p-ht';return 'p-run';}
-function statusDe(evs, op, dest){const last=evs[evs.length-1]||{};const e=last.ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE')return['NA LOJA','p-loja'];if(ehFimLojaMacro(e))return['RETORNO CD','p-run'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(/PARADA|BANHEIRO|EXTRAORD/.test(e) && e!=='PARADA_REFEICAO')return['EM VIAGEM','p-ok']; if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(e.indexOf('FIM_CD')>=0||e==='HT_FIM_CD')return['FIM','p-off'];if((e==='FIM_VIAGEM'||e==='FIM_FINAL') && destEhCd(dest||destDoDetalhe(last.det))) return['FIM','p-off'];if((e==='FIM_VIAGEM'||e==='FIM_FINAL') && opTrocaMacro(op) && !destEhCd(dest||destDoDetalhe(last.det))) return['RETORNO CD','p-run'];if(ehFimReal(e)||e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM'){const prev=(evs||[]).slice(0,-1).reverse().find(x=>x); const pe=prev&&evNome(prev.ev)||''; if(destEhCd(dest)||destEhCd(destDoDetalhe(last.det))||ehFimLojaMacro(pe)||pe==='FIM_VIAGEM'||pe==='FIM_FINAL'||pe==='RETORNO') return ['RETORNO CD','p-run']; return['EM VIAGEM','p-ok'];}return[e||'SINAL','p-run'];}
+function statusDe(evs, op, dest){const last=evs[evs.length-1]||{};const e=last.ev||'';if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE')return['NA LOJA','p-loja'];if(ehFimLojaMacro(e))return['RETORNO CD','p-run'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(ehParada(e,last.det))return['PARADA','p-loja']; if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(e.indexOf('FIM_CD')>=0||e==='HT_FIM_CD')return['FIM','p-off'];if((e==='FIM_VIAGEM'||e==='FIM_FINAL') && destEhCd(dest||destDoDetalhe(last.det))) return['FIM','p-off'];if((e==='FIM_VIAGEM'||e==='FIM_FINAL') && opTrocaMacro(op) && !destEhCd(dest||destDoDetalhe(last.det))) return['RETORNO CD','p-run'];if(ehFimReal(e)||e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM'){const prev=(evs||[]).slice(0,-1).reverse().find(x=>x); const pe=prev&&evNome(prev.ev)||''; if(destEhCd(dest)||destEhCd(destDoDetalhe(last.det))||ehFimLojaMacro(pe)||pe==='FIM_VIAGEM'||pe==='FIM_FINAL'||pe==='RETORNO') return ['RETORNO CD','p-run']; return['EM VIAGEM','p-ok'];}return[e||'SINAL','p-run'];}
 function destDoDetalhe(det){
   let t=String(det||'').replace(/\n/g,' ').replace(/SENHA\s*:\s*\S+/gi,' ').replace(/\s+/g,' ').trim();
   let m=t.match(/DESTINO\s*:\s*([^|]+)/i);
@@ -212,7 +212,7 @@ function destDaViagem(info, lista){
   const i=Math.min(nFim, dests.length-1);
   return dests[i]||dests[0]||'';
 }
-function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(e==='REINICIO_VIAGEM'||d.indexOf('REINICIO')>=0)return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM';return String(ev||'').replace(/_/g,' ');}
+function ehParada(ev,det){const e=evNome(ev); const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return /PARADA|BANHEIRO|EXTRAORD/.test(e+' '+d) && !/REFEICAO/.test(e+' '+d);} function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(ehParada(ev,det)) return 'PARADA EXTRA'; if(e==='PARADA_REFEICAO'||/REFEICAO/.test(d)) return 'PARADA RF'; if(e==='REINICIO_VIAGEM')return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM';return String(ev||'').replace(/_/g,' ');}
 function clsEv(ev){if(ev.includes('BAU')||ev.includes('DESCARREG'))return 'e-bau';if(ev.includes('FIM'))return 'e-fim';if(ev.includes('INICIO'))return 'e-ini';if(ev.includes('RETORNO')||ev.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
 async function pull(url){const r=await fetch(url+'&_='+Date.now(),{cache:'no-store'});return parseCsv(await r.text());}
 let DATA_ISO = '';
@@ -249,7 +249,7 @@ async function carregar(){
       }
       continue;
     }
-    evs.push({ev,placa:pl,hora:hh(r[3])||hh(r[0]),det:String(r[3]||''),dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
+    var det=String(r[3]||''); var ev2=ev; if(/PARADA|BANHEIRO|EXTRAORD/i.test(ev+' '+det) && !/REFEICAO/i.test(ev)) ev2='PARADA_EXTRA'; evs.push({ev:ev2,placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
   }
   const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase().replace(/"/g,''));
   let iData=h.indexOf('DATA'); if(iData<0) iData=0;
@@ -472,7 +472,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261001c';
+const CCO_VER='20261001d';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
