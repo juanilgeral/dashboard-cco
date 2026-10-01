@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930w -->
+<!-- CCO_VER:20261001a -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -327,13 +327,14 @@ function registrarHist(pl, info, lista){
   (lista||[]).forEach((e,i)=>{ if((e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM') && i<iFim) iIni=i; });
   const trecho=(lista||[]).slice(Math.max(0,iIni), iFim+1);
   const dest=destPreferido(info,trecho,lastF);
+  if(String(lastF.dia||'') && String(lastF.dia)!==br(DATA_ISO) && String(lastF.dia)!==DATA_ISO) return;
   const rec={
     placa:pl,op:info.op||'',mot:info.mot||'',dest:dest||destChk||'',
     ev:lastF.ev,hora:lastF.hora||'',
     ini:horaEv(trecho,['INICIO_VIAGEM','REINICIO_VIAGEM']),
     bau:horaEv(trecho,['ABERTURA_BAU','INICIO_DESCARREGAMENTO']),
     fecha:horaEv(trecho,['FECHAMENTO_BAU']),
-    dia:DATA_ISO
+    dia:br(DATA_ISO)
   };
   const hist=loadHist(DATA_ISO);
   if(hist.some(h=>histKey(h)===histKey(rec))) return;
@@ -426,7 +427,7 @@ function pintar(){
       registrarHist(pl, info, lista);
     });
   });
-  const histRaw=loadHist(DATA_ISO).filter(h=>passaOp({op:h.op}));
+  const hojeBr=br(DATA_ISO); const agoraMin=agoraBRT().getHours()*60+agoraBRT().getMinutes(); const histRaw=loadHist(DATA_ISO).filter(h=>passaOp({op:h.op}) && (!h.dia || h.dia===hojeBr || h.dia===DATA_ISO) && horaNum(h.hora)>=0 && horaNum(h.hora)<=agoraMin);
   const seen={};
   histRaw.forEach(h=>{
     const k=histKey(h);
@@ -435,7 +436,7 @@ function pintar(){
     const old=cur?((cur.ini?2:0)+(/CD|GARAGEM|QUEIMAD|BASE/i.test(cur.dest||'')?3:0)): -1;
     if(!cur || score>=old) seen[k]=h;
   });
-  const hist=Object.values(seen).sort((a,b)=>(b.hora||'').localeCompare(a.hora||''));
+  const hist=Object.values(seen).filter(h=>!h.dia||h.dia===hojeBr||h.dia===DATA_ISO).sort((a,b)=>(b.hora||'').localeCompare(a.hora||'')); try{ const limpo=loadHist(DATA_ISO).filter(h=>!h.dia||h.dia===hojeBr||h.dia===DATA_ISO); if(limpo.length!==loadHist(DATA_ISO).length) saveHist(DATA_ISO, limpo); }catch(e){}
   const hb=document.getElementById('tbodyHist');
   const histHtml=hist.map(h=>'<tr><td style="font-weight:800">'+h.placa+'</td><td>'+(h.op?'<span class="pill '+opClass(h.op)+'">'+h.op+'</span>':'—')+'</td><td>'+(h.mot||'—')+'</td><td>'+(h.dest||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.ini||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.bau||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.fecha||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.hora||'—')+'</td></tr>').join('')||'<tr><td colspan="8" class="empty">Nenhuma viagem encerrada ainda</td></tr>';
   if(hb && hb.innerHTML!==histHtml) hb.innerHTML=histHtml;
@@ -471,7 +472,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930w';
+const CCO_VER='20261001a';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
