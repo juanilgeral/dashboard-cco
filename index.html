@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930o -->
+<!-- CCO_VER:20260930q -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -386,7 +386,7 @@ function pintar(){
     const last=lista[lista.length-1];
     const info=mapaCtrl[pl]||{};
     registrarHist(pl, info, lista);
-    if(last && eventoRecente(last.hora,180) && (aindaNaRua(last.ev)||ehFimLojaMacro(last.ev)||last.ev==='RETORNO') && !placaEncerrada(lista,info.dest)) algumNaRua=true;
+    if(last && (aindaNaRua(last.ev)||last.ev==='RETORNO'||(ehFimLojaMacro(last.ev)&&eventoRecente(last.hora,120))) && !placaEncerrada(lista,info.dest)) algumNaRua=true;
   });
   let viagem=0,loja=0,bau=0,fim=0,alm=0; const linhas=[];
   placas.forEach(pl=>{
@@ -394,7 +394,10 @@ function pintar(){
     const last=lista[lista.length-1]||{};
     const destNow0=destPreferido(mapaCtrl[pl]||{},lista,last);
     const final=fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista);
-    const vivo=eventoRecente(last.hora, 180) && (aindaNaRua(last.ev) || ehFimLojaMacro(last.ev) || last.ev==='RETORNO');
+    const indoCd = last.ev==='RETORNO' || ((last.ev==='INICIO_VIAGEM'||last.ev==='REINICIO_VIAGEM') && destEhCd(destNow0||destDoDetalhe(last.det)));
+    const vivo= !fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista) && (
+      aindaNaRua(last.ev) || indoCd || (ehFimLojaMacro(last.ev) && eventoRecente(last.hora,120))
+    );
     if(!vivo) return;
     const [st,cls]=lista.length?statusDe(lista,(mapaCtrl[pl]||{}).op,destNow0):['NO CONTROLE','p-run'];
     if(st==='EM VIAGEM'||st==='RETORNO CD') viagem++;
@@ -449,7 +452,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930o';
+const CCO_VER='20260930q';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
