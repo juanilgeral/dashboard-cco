@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930s -->
+<!-- CCO_VER:20260930v -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -47,10 +47,8 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
 .panel{min-height:0;display:flex;flex-direction:column;background:rgba(8,14,24,.9);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .scroll{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .panel h3{font-family:Orbitron,sans-serif;font-size:clamp(.78rem,1.05vw,.95rem);letter-spacing:.14em;color:var(--cyan);padding:10px 12px;border-bottom:1px solid var(--line)}
-.feed{flex:1;min-height:0;overflow:hidden;position:relative}
-.feed-track{display:block;animation:feedUp 80s linear infinite}
-.feed:hover .feed-track{animation-play-state:paused}
-@keyframes feedUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+.feed{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+.feed-track{display:block}
 
 .div-hist{margin:14px 12px 0;padding:10px 0 8px;border-top:1px solid rgba(0,229,255,.28);color:var(--amber);font-family:Orbitron,sans-serif;font-size:clamp(.72rem,1vw,.88rem);letter-spacing:.16em;text-transform:uppercase}
 .tbl-hist td{opacity:.92}
@@ -112,7 +110,7 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
         </table>
       </div>
     </div>
-    <div class="panel"><h3>Radar de eventos</h3><div class="feed" id="feed"><div class="empty">Aguardando pulso…</div></div></div>
+    <div class="panel"><h3 id="titRadar">Radar de eventos · desde 01:00</h3><div class="feed" id="feed"><div class="empty">Aguardando pulso…</div></div></div>
   </div>
   <div class="ticker"><div class="ticker-track" id="ticker"></div></div>
 </div>
@@ -245,11 +243,11 @@ async function carregar(){
     if(ev==='IGNORA_CD'||ev==='SEM_LANC'){
       const det=String(r[3]||'');
       if(/INICIO|REINICIO|DESTINO|CD/i.test(det)){
-        evs.push({ev:'RETORNO',placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0});
+        evs.push({ev:'RETORNO',placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
       }
       continue;
     }
-    evs.push({ev,placa:pl,hora:hh(r[3])||hh(r[0]),det:String(r[3]||''),dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0});
+    evs.push({ev,placa:pl,hora:hh(r[3])||hh(r[0]),det:String(r[3]||''),dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
   }
   const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase().replace(/"/g,''));
   let iData=h.indexOf('DATA'); if(iData<0) iData=0;
@@ -320,14 +318,15 @@ function registrarHist(pl, info, lista){
   if(!fims.length) return;
   const lastF=fims[fims.length-1];
   const destChk=destPreferido(info,lista,lastF);
-  if(!fimEhFinal(info.op, destChk, lastF.ev, lista)) return;
+  if(ehFimLojaMacro(lastF.ev)) return;
+  if(!fimEhFinal(info.op, destChk, lastF.ev, lista) && !destEhCd(destChk)) return;
   const iFim=(lista||[]).lastIndexOf(lastF);
   let iIni=-1;
   (lista||[]).forEach((e,i)=>{ if((e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM') && i<iFim) iIni=i; });
   const trecho=(lista||[]).slice(Math.max(0,iIni), iFim+1);
   const dest=destPreferido(info,trecho,lastF);
   const rec={
-    placa:pl,op:info.op||'',mot:info.mot||'',dest:dest,
+    placa:pl,op:info.op||'',mot:info.mot||'',dest:dest||destChk||'',
     ev:lastF.ev,hora:lastF.hora||'',
     ini:horaEv(trecho,['INICIO_VIAGEM','REINICIO_VIAGEM']),
     bau:horaEv(trecho,['ABERTURA_BAU','INICIO_DESCARREGAMENTO']),
@@ -402,6 +401,8 @@ function pintar(){
       (aindaNaRua(last.ev) && eventoRecente(last.hora,90) && last.ev!=='INICIO_VIAGEM' && last.ev!=='REINICIO_VIAGEM')
     );
     if(!vivo) return;
+    const jaFim=loadHist(DATA_ISO).some(h=>h.placa===pl && (h.hora||'')>=(last.hora||''));
+    if(jaFim && destEhCd(destNow0)) return;
     const [st,cls]=lista.length?statusDe(lista,(mapaCtrl[pl]||{}).op,destNow0):['NO CONTROLE','p-run'];
     if(st==='EM VIAGEM'||st==='RETORNO CD') viagem++;
     if(st==='NA LOJA') loja++;
@@ -448,24 +449,26 @@ function pintar(){
   const kpis=document.getElementById('kpis');
   var kpiHtml='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+evs.length+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
   if(kpis && kpis.dataset.sig!==kpiHtml){ kpis.dataset.sig=kpiHtml; kpis.innerHTML=kpiHtml; }
-  const todos=(CACHE.todos||evs).filter(e => passaOp(mapaCtrl[e.placa]));
-  const recent=todos.slice().reverse();
+  const todos=(CACHE.todos&&CACHE.todos.length?CACHE.todos:evs).filter(e => passaOp(mapaCtrl[e.placa]) || !mapaCtrl[e.placa]);
+  const recent=todos.slice().sort(function(a,b){return String(b.ts||'').localeCompare(String(a.ts||''));});
   const feed=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><span class="pl">'+e.placa+'</span><time>'+(e.hora||'--:--')+'</time><div><b>'+rotuloEv(e.ev,e.det)+'</b><small>'+(info.mot||'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Aguardando eventos</div>';
   const fd=document.getElementById('feed');
-  const feedWrap='<div class="feed-track">'+feed+feed+'</div>';
+  const feedWrap='<div class="feed-track">'+feed+'</div>';
   if(fd && fd.dataset.sig!==feed){ fd.dataset.sig=feed; fd.innerHTML=feedWrap; }
+  const tr=document.getElementById('titRadar'); if(tr) tr.textContent='Radar de eventos · '+recent.length+' desde 01:00';
   const ticks=recent;
   const tickHtml=ticks.map(e=>{const info=mapaCtrl[e.placa]||{};return '<span class="tick '+clsEv(e.ev)+'"><time>'+e.hora+'</time><b>'+rotuloEv(e.ev,e.det)+'</b> '+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</span>';}).join('');
   const tk=document.getElementById('ticker');
   const next=(tickHtml+tickHtml)||'<span class="tick">Aguardando eventos…</span>';
   if(tk && tk.dataset.sig!==next){ tk.dataset.sig=next; tk.innerHTML=next; }
+  if(tk){ const n=Math.max(1,(tickHtml.match(/class="tick"/g)||[]).length); tk.style.animationDuration=Math.max(180, n*8)+'s'; }
 }
 function tick(){document.getElementById('relogio').textContent=agoraBRT().toLocaleTimeString('pt-BR');}
 async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930s';
+const CCO_VER='20260930v';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
