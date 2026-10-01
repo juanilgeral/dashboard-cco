@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20260930q -->
+<!-- CCO_VER:20260930r -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -394,9 +394,12 @@ function pintar(){
     const last=lista[lista.length-1]||{};
     const destNow0=destPreferido(mapaCtrl[pl]||{},lista,last);
     const final=fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista);
-    const indoCd = last.ev==='RETORNO' || ((last.ev==='INICIO_VIAGEM'||last.ev==='REINICIO_VIAGEM') && destEhCd(destNow0||destDoDetalhe(last.det)));
+    const destCd=destEhCd(destNow0||destDoDetalhe(last.det));
+    const indoCd = last.ev==='RETORNO' || ((last.ev==='INICIO_VIAGEM'||last.ev==='REINICIO_VIAGEM') && destCd);
     const vivo= !fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista) && (
-      aindaNaRua(last.ev) || indoCd || (ehFimLojaMacro(last.ev) && eventoRecente(last.hora,120))
+      indoCd ||
+      (ehFimLojaMacro(last.ev) && eventoRecente(last.hora,90)) ||
+      (aindaNaRua(last.ev) && eventoRecente(last.hora,90) && last.ev!=='INICIO_VIAGEM' && last.ev!=='REINICIO_VIAGEM')
     );
     if(!vivo) return;
     const [st,cls]=lista.length?statusDe(lista,(mapaCtrl[pl]||{}).op,destNow0):['NO CONTROLE','p-run'];
@@ -411,7 +414,16 @@ function pintar(){
   const tb=document.getElementById('tbody');
   const html=linhas.join('')||'<tr><td colspan="7" class="empty">Aguardando saídas</td></tr>';
   if(tb && tb.innerHTML!==html) tb.innerHTML=html;
-  const histRaw=loadHist(DATA_ISO).filter(h=>passaOp({op:h.op}) && !(opTrocaMacro(h.op) && !destEhCd(h.dest)));
+  Object.keys(por).forEach(pl=>{
+    const lista=por[pl]||[]; const info=mapaCtrl[pl]||{};
+    lista.filter(e=>e.ev==='FIM_VIAGEM'||e.ev==='HT_FIM_CD'||String(e.ev).indexOf('FIM_CD')>=0).forEach(lastF=>{
+      if(ehFimLojaMacro(lastF.ev)) return;
+      const dest=destPreferido(info,lista,lastF);
+      if(!(destEhCd(dest)||String(lastF.ev).indexOf('FIM_CD')>=0||lastF.ev==='HT_FIM_CD')) return;
+      registrarHist(pl, info, lista);
+    });
+  });
+  const histRaw=loadHist(DATA_ISO).filter(h=>passaOp({op:h.op}));
   const seen={};
   histRaw.forEach(h=>{
     const k=histKey(h);
@@ -420,7 +432,7 @@ function pintar(){
     const old=cur?((cur.ini?2:0)+(/CD|GARAGEM|QUEIMAD|BASE/i.test(cur.dest||'')?3:0)): -1;
     if(!cur || score>=old) seen[k]=h;
   });
-  const hist=Object.values(seen).sort((a,b)=>(b.hora||'').localeCompare(a.hora||'')); saveHist(DATA_ISO, hist.slice().reverse());
+  const hist=Object.values(seen).sort((a,b)=>(b.hora||'').localeCompare(a.hora||''));
   const hb=document.getElementById('tbodyHist');
   const histHtml=hist.map(h=>'<tr><td style="font-weight:800">'+h.placa+'</td><td>'+(h.op?'<span class="pill '+opClass(h.op)+'">'+h.op+'</span>':'—')+'</td><td>'+(h.mot||'—')+'</td><td>'+(h.dest||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.ini||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.bau||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.fecha||'—')+'</td><td style="font-family:Share Tech Mono,monospace">'+(h.hora||'—')+'</td></tr>').join('')||'<tr><td colspan="8" class="empty">Nenhuma viagem encerrada ainda</td></tr>';
   if(hb && hb.innerHTML!==histHtml) hb.innerHTML=histHtml;
@@ -452,7 +464,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20260930q';
+const CCO_VER='20260930r';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
