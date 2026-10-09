@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261009f -->
+<!-- CCO_VER:20261009g -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -425,10 +425,9 @@ function pintar(){
     const fimLojaTardio=ehFimLojaMacro(last.ev) && voltou && !depois.some(e=>e.ev==='CHEGADA_CLIENTE'||e.ev==='ABERTURA_BAU'||e.ev==='INICIO_DESCARREGAMENTO');
     const fimLojaSemRetorno=ehFimLojaMacro(last.ev) && !voltou;
     const emTransito = fimLojaTardio || (!fimLojaSemRetorno && (last.ev==='INICIO_VIAGEM'||last.ev==='REINICIO_VIAGEM'||last.ev==='RETORNO'||/PARADA|BANHEIRO|EXTRAORD/.test(last.ev||'')));
-    const vivo= !fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista) && (
-      emTransito ||
-      (aindaNaRua(last.ev) && !ehFimLojaMacro(last.ev) && eventoRecente(last.hora,240))
-    );
+    const evAberto=['INICIO_VIAGEM','REINICIO_VIAGEM','RETORNO','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','PARADA_EXTRA','PARADA_REFEICAO','CV_FIM_LOJA','LS_FIM_MACRO'];
+    const vivo = evAberto.indexOf(last.ev)>=0 || ehFimLojaMacro(last.ev) || aindaNaRua(last.ev);
+    if(last.ev==='FIM_FINAL' || last.ev==='FIM_VIAGEM' && !opTrocaMacro((mapaCtrl[pl]||{}).op)) return;
     if(!vivo) return;
     if(fimLojaTardio) last=Object.assign({}, last, {ev:'RETORNO',hora:(lista[iRet]||last).hora,det:(lista[iRet]||last).det||''});
     const jaFim=loadHist(DATA_ISO).some(h=>h.placa===pl && (h.hora||'')>=(last.hora||''));
@@ -499,7 +498,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261009f';
+const CCO_VER='20261009g';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
