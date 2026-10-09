@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261009b -->
+<!-- CCO_VER:20261009c -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -214,7 +214,18 @@ function destDaViagem(info, lista){
 }
 function ehParada(ev,det){const e=evNome(ev); const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return /PARADA|BANHEIRO|EXTRAORD/.test(e+' '+d) && !/REFEICAO/.test(e+' '+d);} function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(ehParada(ev,det)) return 'PARADA EXTRA'; if(e==='PARADA_REFEICAO'||/REFEICAO/.test(d)) return 'PARADA RF'; if(e==='REINICIO_VIAGEM')return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM';return String(ev||'').replace(/_/g,' ');}
 function clsEv(ev){if(ev.includes('BAU')||ev.includes('DESCARREG'))return 'e-bau';if(ev.includes('FIM'))return 'e-fim';if(ev.includes('INICIO'))return 'e-ini';if(ev.includes('RETORNO')||ev.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
-async function pull(url){const r=await fetch(url+'&_='+Date.now(),{cache:'no-store'});return parseCsv(await r.text());}
+async function pull(url){
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(),20000);
+  try{
+    const r=await fetch(url+'&_='+Date.now(),{cache:'no-store',signal:ctrl.signal});
+    return parseCsv(await r.text());
+  }finally{ clearTimeout(t); }
+}
+async function pullDia(url, dias){
+  const q=dias.map(d=>"A contains '"+d+"'").join(' or ');
+  return pull(url+'&tq='+encodeURIComponent('select * where '+q));
+}
 let DATA_ISO = '';
 function consultarData(){
   const v=document.getElementById('fData').value;
@@ -230,11 +241,11 @@ function voltarHoje(){
 async function carregar(){
   const iso=isoOperacional(), alvo=br(iso);
   document.getElementById('subtitulo').textContent='Dia operacional '+alvo+' · Controle + Trucks';
-  let log=[],ctrl=[];
-  try{log=await pull(TRUCKS);}catch(e){}
-  try{ctrl=await pull(CONTROLE);}catch(e){}
   const ontem=br(isoOntem());
   const alvos=agoraBRT().getHours()<8 ? [alvo,ontem] : [alvo];
+  let log=[],ctrl=[];
+  try{log=await pullDia(TRUCKS, alvos);}catch(e){ try{log=await pull(TRUCKS);}catch(e2){} }
+  try{ctrl=await pull(CONTROLE);}catch(e){}
   const evs=[];
   for(let i=1;i<log.length;i++){
     const r=log[i]; if(!r||!r[0]) continue;
@@ -477,7 +488,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261009b';
+const CCO_VER='20261009c';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
