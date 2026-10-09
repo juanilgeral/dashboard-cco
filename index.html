@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261001d -->
+<!-- CCO_VER:20261009a -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -397,13 +397,18 @@ function pintar(){
     const destNow0=destPreferido(mapaCtrl[pl]||{},lista,last);
     const final=fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista);
     const destCd=destEhCd(destNow0||destDoDetalhe(last.det));
-    const emTransito = last.ev==='INICIO_VIAGEM'||last.ev==='REINICIO_VIAGEM'||last.ev==='RETORNO'||/PARADA|BANHEIRO|EXTRAORD/.test(last.ev||'');
+    const iRet=lista.map((e,i)=>(e.ev==='RETORNO'||((e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM')&&destEhCd(destDoDetalhe(e.det))))?i:-1).filter(i=>i>=0).pop();
+    const voltou=iRet>=0;
+    const depois=voltou?lista.slice(iRet+1):[];
+    const fimLojaTardio=ehFimLojaMacro(last.ev) && voltou && !depois.some(e=>e.ev==='CHEGADA_CLIENTE'||e.ev==='ABERTURA_BAU'||e.ev==='INICIO_DESCARREGAMENTO');
+    const fimLojaSemRetorno=ehFimLojaMacro(last.ev) && !voltou;
+    const emTransito = fimLojaTardio || (!fimLojaSemRetorno && (last.ev==='INICIO_VIAGEM'||last.ev==='REINICIO_VIAGEM'||last.ev==='RETORNO'||/PARADA|BANHEIRO|EXTRAORD/.test(last.ev||'')));
     const vivo= !fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista) && (
       emTransito ||
-      (ehFimLojaMacro(last.ev) && eventoRecente(last.hora,180)) ||
-      (aindaNaRua(last.ev) && eventoRecente(last.hora,240))
+      (aindaNaRua(last.ev) && !ehFimLojaMacro(last.ev) && eventoRecente(last.hora,240))
     );
     if(!vivo) return;
+    if(fimLojaTardio) last={ev:'RETORNO',hora:(lista[iRet]||last).hora,det:(lista[iRet]||last).det||''};
     const jaFim=loadHist(DATA_ISO).some(h=>h.placa===pl && (h.hora||'')>=(last.hora||''));
     if(jaFim && destEhCd(destNow0)) return;
     const [st,cls]=lista.length?statusDe(lista,(mapaCtrl[pl]||{}).op,destNow0):['NO CONTROLE','p-run'];
@@ -472,7 +477,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261001d';
+const CCO_VER='20261009a';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
@@ -491,7 +496,8 @@ checarGithub();setInterval(checarGithub,90000);
 
 (function(){ const el=document.getElementById('fData'); DATA_ISO=isoOperacional(); if(el) el.value=DATA_ISO; })();
 carregar();
-setInterval(function(){ if(DATA_ISO===isoOperacional()) carregar(); },10000);
+setInterval(function(){ if(DATA_ISO!==isoOperacional()) location.reload(); else carregar(); },10000);
+setInterval(function(){ location.reload(); }, 15*60*1000);
 </script>
 </body>
 </html>
