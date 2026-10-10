@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor Baú — CCO Juanil</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#05070d;--line:rgba(0,229,255,.25);--cyan:#00e5ff;--lime:#b8ff3d;--amber:#ffb020;--red:#ff3b5c;--muted:#b7c4d8;--text:#e8f4ff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#05070d;color:var(--text);font-family:Rajdhani,system-ui,sans-serif;min-height:100vh;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.brand{font-family:Orbitron,sans-serif;font-size:1.6rem;color:var(--cyan);letter-spacing:.12em}
+.clock{font-family:"Share Tech Mono",monospace;font-size:2rem;color:var(--lime)}
+.kpis{display:flex;gap:12px;margin-bottom:16px}
+.kpi{background:rgba(8,14,24,.9);border:1px solid var(--line);border-radius:10px;padding:10px 16px;min-width:140px}
+.kpi .l{font-size:.85rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.kpi .n{font-family:Orbitron,sans-serif;font-size:2.2rem}
+.c-amber{color:var(--amber)}.c-cyan{color:var(--cyan)}
+.panel{background:rgba(8,14,24,.92);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.panel h3{font-family:Orbitron,sans-serif;font-size:.95rem;letter-spacing:.12em;color:var(--cyan);padding:10px 14px;border-bottom:1px solid var(--line)}
+.scroll{max-height:calc(100vh - 220px);overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid rgba(0,229,255,.12)}
+th{color:var(--muted);font-size:.8rem;letter-spacing:.08em;text-transform:uppercase}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;font-weight:700}
+.p-loja{background:rgba(255,176,32,.2);color:var(--amber)}
+.p-run{background:rgba(0,229,255,.15);color:var(--cyan)}
+.empty{text-align:center;padding:30px;color:var(--muted)}
+.aberto{background:rgba(255,176,32,.08)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="brand">MONITOR BAÚ</div>
+    <a href="index.html" style="display:inline-block;margin-top:6px;background:rgba(0,229,255,.12);border:1px solid var(--cyan);color:var(--cyan);border-radius:8px;padding:4px 10px;font:700 .75rem Rajdhani,sans-serif;letter-spacing:.08em;text-decoration:none">← VOLTAR AO CCO</a>
+  </div>
+  <div class="clock" id="relogio">--:--:--</div>
+</header>
+<div class="kpis">
+  <div class="kpi"><div class="l">Aberturas hoje</div><div class="n c-cyan" id="kpiTotal">0</div></div>
+  <div class="kpi"><div class="l">Baú aberto agora</div><div class="n c-amber" id="kpiAberto">0</div></div>
+</div>
+<div class="panel">
+  <h3>Últimas aberturas de baú · atualização a cada 10s</h3>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Hora</th><th>Placa</th><th>OP</th><th>Motorista</th><th>Local / Detalhe</th><th>Status</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+<script>
+const TRUCKS='https://docs.google.com/spreadsheets/d/1TtgHyiAFdj1jCZGfm4VYzqw-4bEluQ34c95cYH_M6OA/gviz/tq?tqx=out:csv&gid=149639861';
+const CONTROLE='https://docs.google.com/spreadsheets/d/19ztgd86-ivwJveXp0Q_032P1fFaSuC9D9uaMJ4r6mP8/gviz/tq?tqx=out:csv&gid=1559964021';
+function agoraBRT(){return new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));}
+function isoHoje(){const d=agoraBRT();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function br(iso){const[y,m,d]=iso.split('-');return d+'/'+m+'/'+y;}
+function parseCsv(text){const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const c=text[i];if(q){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++;}else q=false;}else cell+=c;}else if(c==='"')q=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}else if(c!=='\r')cell+=c;}if(cell||row.length){row.push(cell);rows.push(row);}return rows;}
+function extrairPlaca(v){const limpo=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');const m=limpo.match(/([A-Z]{3}\d[A-Z0-9]\d{2}|[A-Z]{3}\d{4})/);return m?m[1]:limpo;}
+function hh(v){const m=String(v||'').match(/(\d{1,2}:\d{2})/);return m?m[1].padStart(5,'0'):'';}
+async function pull(url){
+  const r=await fetch(url+'&_='+Date.now(),{cache:'no-store'});
+  return parseCsv(await r.text());
+}
+async function carregar(){
+  document.getElementById('relogio').textContent=agoraBRT().toLocaleTimeString('pt-BR');
+  const iso=isoHoje(), alvo=br(iso);
+  let log=[],ctrl=[];
+  try{log=await pull(TRUCKS+'&tq='+encodeURIComponent("select * where todate(A) = date '"+iso+"'"));}catch(e){try{log=await pull(TRUCKS);}catch(e2){}}
+  try{ctrl=await pull(CONTROLE);}catch(e){}
+  const mapa={};
+  const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase());
+  const iOp=h.indexOf('OP')<0?2:h.indexOf('OP');
+  const iV=Math.max(h.findIndex(x=>x.includes('VEIC')),3);
+  const iMot=h.indexOf('MOTORISTA')<0?4:h.indexOf('MOTORISTA');
+  for(let i=1;i<ctrl.length;i++){
+    const r=ctrl[i]; if(!r) continue;
+    const pl=extrairPlaca(r[iV]); if(!pl) continue;
+    mapa[pl]={op:String(r[iOp]||'').trim(),mot:String(r[iMot]||'').trim()};
+  }
+  const baus=[];
+  for(let i=1;i<log.length;i++){
+    const r=log[i]; if(!r||!r[0]) continue;
+    if(String(r[0]).indexOf(alvo)!==0) continue;
+    if(String(r[1]||'').toUpperCase()!=='ABERTURA_BAU') continue;
+    const pl=extrairPlaca(r[2]); if(!pl) continue;
+    baus.push({placa:pl,hora:hh(r[3])||hh(r[0]),det:String(r[3]||''),ts:r[0]});
+  }
+  baus.sort((a,b)=>(b.ts||'').localeCompare(a.ts||''));
+  const lastByPlaca={};
+  log.forEach(r=>{
+    if(!r||!r[0]||String(r[0]).indexOf(alvo)!==0) return;
+    const pl=extrairPlaca(r[2]); if(!pl) return;
+    lastByPlaca[pl]=String(r[1]||'').toUpperCase();
+  });
+  let abertoAgora=0;
+  const html=baus.slice(0,40).map(e=>{
+    const info=mapa[e.placa]||{};
+    const last=lastByPlaca[e.placa]||'';
+    const aberto=last==='ABERTURA_BAU'||last==='INICIO_DESCARREGAMENTO';
+    if(aberto) abertoAgora++;
+    const det=String(e.det).replace(/\|/g,' · ').slice(0,90);
+    return '<tr class="'+(aberto?'aberto':'')+'"><td style="font-family:Share Tech Mono,monospace;font-weight:700">'+(e.hora||'—')+'</td><td style="font-weight:800">'+e.placa+'</td><td>'+(info.op||'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+det+'</td><td><span class="pill '+(aberto?'p-loja':'p-run')+'">'+(aberto?'BAÚ ABERTO':'—')+'</span></td></tr>';
+  }).join('')||'<tr><td colspan="6" class="empty">Nenhuma abertura de baú hoje</td></tr>';
+  document.getElementById('tbody').innerHTML=html;
+  document.getElementById('kpiTotal').textContent=baus.length;
+  document.getElementById('kpiAberto').textContent=abertoAgora;
+}
+carregar();
+setInterval(carregar,10000);
+</script>
+</body>
+</html>

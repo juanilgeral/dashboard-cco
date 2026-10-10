@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261010a -->
+<!-- CCO_VER:20261010b -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -92,20 +92,14 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
     </div>
     <div class="status-box">
       <div class="filtros" id="filtros"></div>
+      <div style="margin-top:6px;text-align:right">
+        <a href="monitor-bau.html" style="display:inline-block;background:rgba(255,176,32,.15);border:1px solid var(--amber);color:var(--amber);border-radius:8px;padding:5px 12px;font:700 .8rem Rajdhani,sans-serif;letter-spacing:.08em;text-decoration:none">MONITOR BAÚ</a>
+      </div>
       <div class="clock" id="relogio">--:--:--</div>
       <div class="sub" id="subtitulo">Carregando malha…</div>
     </div>
   </header>
   <div class="kpis" id="kpis"></div>
-  <div class="panel" id="bauPanel" style="max-height:280px;flex:0 0 auto;margin-bottom:10px;">
-    <h3>Monitor Abertura Baú · tempo real <span id="bauCount" style="color:var(--amber)"></span></h3>
-    <div class="scroll" style="max-height:220px;">
-      <table class="tbl">
-        <thead><tr><th>Hora</th><th>Placa</th><th>OP</th><th>Motorista</th><th>Local / Detalhe</th><th>Status atual</th></tr></thead>
-        <tbody id="tbodyBau"><tr><td colspan="6" class="empty">Aguardando sinais de abertura…</td></tr></tbody>
-      </table>
-    </div>
-  </div>
   <div class="grid">
     <div class="panel">
       <h3>Frota em movimento · Controle + Trucks</h3>
@@ -454,22 +448,6 @@ function pintar(){
   const html=linhas.join('')||'<tr><td colspan="7" class="empty">Aguardando saídas</td></tr>';
   if(tb && tb.innerHTML!==html) tb.innerHTML=html;
 
-  // Monitor Abertura Baú em tempo real
-  const bauEvs = (CACHE.todos||evs||[]).filter(e => e.ev==='ABERTURA_BAU' && e.hoje);
-  bauEvs.sort((a,b)=>(b.ts||b.hora||'').localeCompare(a.ts||a.hora||''));
-  const recentBau = bauEvs.slice(0, 25);
-  const bauLinhas = recentBau.map(e => {
-    const info = mapaCtrl[e.placa] || {};
-    const listaPl = por[e.placa] || [];
-    const lastPl = listaPl[listaPl.length-1] || {};
-    const stAtual = lastPl.ev === 'ABERTURA_BAU' || lastPl.ev === 'INICIO_DESCARREGAMENTO' ? 'BAÚ ABERTO' : (lastPl.ev || '—');
-    const det = String(e.det||'').replace(/\|/g,' · ').slice(0,80);
-    return '<tr><td style="font-family:Share Tech Mono,monospace;font-weight:700">'+ (e.hora||'—') +'</td><td style="font-weight:800">'+e.placa+'</td><td>'+(info.op||'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+det+'</td><td><span class="pill '+(stAtual==='BAÚ ABERTO'?'p-loja':'p-run')+'">'+stAtual+'</span></td></tr>';
-  }).join('') || '<tr><td colspan="6" class="empty">Nenhuma abertura de baú hoje ainda</td></tr>';
-  const tbBau = document.getElementById('tbodyBau');
-  if(tbBau && tbBau.innerHTML !== bauLinhas) tbBau.innerHTML = bauLinhas;
-  const bc = document.getElementById('bauCount');
-  if(bc) bc.textContent = '(' + bauEvs.length + ' hoje)';
   Object.keys(por).forEach(pl=>{
     const lista=por[pl]||[]; const info=mapaCtrl[pl]||{};
     lista.filter(e=>e.ev==='FIM_VIAGEM'||e.ev==='HT_FIM_CD'||String(e.ev).indexOf('FIM_CD')>=0).forEach(lastF=>{
@@ -524,7 +502,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261010a';
+const CCO_VER='20261010c';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
