@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261015d -->
+<!-- CCO_VER:20261015e -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -498,7 +498,7 @@ function pintar(){
     if(prev && Math.abs(horaNum(prev)-horaNum(e.hora))<8) return;
     vistos[k]=e.hora; limpos.push(e);
   });
-  const recent=limpos;
+  const recent=limpos.slice().sort(function(a,b){return String(a.ts||'').localeCompare(String(b.ts||''));});
   const feed=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><span class="pl">'+e.placa+'</span><time>'+(e.hora||'--:--')+'</time><div><b>'+rotuloEv(e.ev,e.det)+'</b><small>'+(info.mot||'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Aguardando eventos</div>';
   const fd=document.getElementById('feed');
   const feedWrap='<div class="feed-track">'+feed+feed+'</div>';
@@ -517,7 +517,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261015d';
+const CCO_VER='20261015e';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
