@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261015a -->
+<!-- CCO_VER:20261015b -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -509,7 +509,7 @@ async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
     const txt=await (await fetch(base+(base.slice(-1)==='/'?'index.html':'')+'?_gh='+Date.now(),{cache:'no-store'})).text();
-    const m=txt.match(/CCO_VER[:'"\s=]+([0-9a-zA-Z]+)/);
+    const m=txt.match(/const CCO_VER=['"]([0-9a-zA-Z]+)['"]/);
     const rem=m?m[1]:'';
     if(rem && rem!==CCO_VER){
       const c=document.getElementById('swapCover');
