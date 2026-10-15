@@ -212,8 +212,9 @@ function destDaViagem(info, lista){
   const i=Math.min(nFim, dests.length-1);
   return dests[i]||dests[0]||'';
 }
-function ehParada(ev,det){const e=evNome(ev); const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return /PARADA|BANHEIRO|EXTRAORD/.test(e+' '+d) && !/REFEICAO/.test(e+' '+d);} function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(ehParada(ev,det)) return 'PARADA EXTRA'; if(e==='PARADA_REFEICAO'||/REFEICAO/.test(d)) return 'PARADA RF'; if(e==='REINICIO_VIAGEM')return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM';return String(ev||'').replace(/_/g,' ');}
-function clsEv(ev){if(ev.includes('BAU')||ev.includes('DESCARREG'))return 'e-bau';if(ev.includes('FIM'))return 'e-fim';if(ev.includes('INICIO'))return 'e-ini';if(ev.includes('RETORNO')||ev.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
+function ehParada(ev,det){const e=evNome(ev); const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return /PARADA|BANHEIRO|EXTRAORD/.test(e+' '+d) && !/REFEICAO/.test(e+' '+d);} function operacional(ev){const e=evNome(ev); return ['PORTA_MOTORISTA','PORTA_CARONA','PORTA_MOT_TEMPO','PORTA_CAR_TEMPO','PORTA_MOT_NAO_AUT','PORTA_CAR_NAO_AUT','PANICO','VELOCIDADE','RPM','PARADO_EXCEDIDO','DESENGATE'].indexOf(e)>=0;}
+function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(ehParada(ev,det)) return 'PARADA EXTRA'; if(e==='PARADA_REFEICAO'||/REFEICAO/.test(d)) return 'PARADA RF'; if(e==='REINICIO_VIAGEM')return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM'; if(e==='PORTA_MOTORISTA')return 'PORTA MOTORISTA'; if(e==='PORTA_CARONA')return 'PORTA CARONA'; if(e==='PORTA_MOT_TEMPO')return 'PORTA MOT. TEMPO'; if(e==='PORTA_CAR_TEMPO')return 'PORTA CAR. TEMPO'; if(e==='PORTA_MOT_NAO_AUT')return 'PORTA MOT. NÃO AUT.'; if(e==='PORTA_CAR_NAO_AUT')return 'PORTA CAR. NÃO AUT.'; if(e==='PANICO')return 'PÂNICO'; if(e==='VELOCIDADE')return 'VELOCIDADE'; if(e==='RPM')return 'RPM'; if(e==='PARADO_EXCEDIDO')return 'PARADO EXCEDIDO'; if(e==='DESENGATE')return 'DESENGATE'; return String(ev||'').replace(/_/g,' ');}
+function clsEv(ev){const e=evNome(ev); if(e==='PANICO')return 'e-fim'; if(operacional(e))return 'e-ret'; if(e.includes('BAU')||e.includes('DESCARREG'))return 'e-bau';if(e.includes('FIM'))return 'e-fim';if(e.includes('INICIO'))return 'e-ini';if(e.includes('RETORNO')||e.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
 async function pull(url){
   const ctrl=new AbortController();
   const t=setTimeout(()=>ctrl.abort(),20000);
@@ -415,7 +416,7 @@ function pintar(){
   let viagem=0,loja=0,bau=0,fim=0,alm=0; const linhas=[];
   placas.forEach(pl=>{
     const lista=por[pl]||[]; if(!lista.length) return;
-    let last=lista[lista.length-1]||{};
+    let last=(lista.slice().reverse().find(e=>!operacional(e.ev))||lista[lista.length-1]||{});
     const destNow0=destPreferido(mapaCtrl[pl]||{},lista,last);
     const final=fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista);
     const destCd=destEhCd(destNow0||destDoDetalhe(last.det));
@@ -503,7 +504,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261015a';
+const CCO_VER='20261015b';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
