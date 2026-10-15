@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261015c -->
+<!-- CCO_VER:20261015d -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -484,8 +484,21 @@ function pintar(){
   const kpis=document.getElementById('kpis');
   var kpiHtml='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+evs.length+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
   if(kpis && kpis.dataset.sig!==kpiHtml){ kpis.dataset.sig=kpiHtml; kpis.innerHTML=kpiHtml; }
-  const todos=(CACHE.todos&&CACHE.todos.length?CACHE.todos:evs).filter(e => e.ev!=='BAU_IGNORADO' && (passaOp(mapaCtrl[e.placa]) || !mapaCtrl[e.placa]));
-  const recent=todos.slice().sort(function(a,b){return String(b.ts||'').localeCompare(String(a.ts||''));});
+  const todos=(CACHE.todos&&CACHE.todos.length?CACHE.todos:evs).filter(e => {
+    if(e.ev==='BAU_IGNORADO') return false;
+    // Porta, pânico e demais operacionais aparecem em qualquer filtro.
+    if(operacional(e.ev)) return true;
+    return passaOp(mapaCtrl[e.placa]) || !mapaCtrl[e.placa];
+  });
+  // Mesma placa + mesmo evento seguido não repete (sensor dispara a cada mensagem).
+  const vistos={}; const limpos=[];
+  todos.slice().sort(function(a,b){return String(b.ts||'').localeCompare(String(a.ts||''));}).forEach(e=>{
+    const k=e.placa+'|'+e.ev;
+    const prev=vistos[k];
+    if(prev && Math.abs(horaNum(prev)-horaNum(e.hora))<8) return;
+    vistos[k]=e.hora; limpos.push(e);
+  });
+  const recent=limpos;
   const feed=recent.map(e=>{const info=mapaCtrl[e.placa]||{};return '<div class="ev '+clsEv(e.ev)+'"><span class="pl">'+e.placa+'</span><time>'+(e.hora||'--:--')+'</time><div><b>'+rotuloEv(e.ev,e.det)+'</b><small>'+(info.mot||'')+(info.op?' · '+info.op:'')+'</small></div></div>';}).join('')||'<div class="empty">Aguardando eventos</div>';
   const fd=document.getElementById('feed');
   const feedWrap='<div class="feed-track">'+feed+feed+'</div>';
@@ -504,7 +517,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261015c';
+const CCO_VER='20261015d';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
