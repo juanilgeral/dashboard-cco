@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261010d -->
+<!-- CCO_VER:20261015a -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -92,9 +92,6 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
     </div>
     <div class="status-box">
       <div class="filtros" id="filtros"></div>
-      <div style="margin-top:6px;text-align:right">
-        <a href="monitor-bau.html" style="display:inline-block;background:rgba(255,176,32,.15);border:1px solid var(--amber);color:var(--amber);border-radius:8px;padding:5px 12px;font:700 .8rem Rajdhani,sans-serif;letter-spacing:.08em;text-decoration:none">MONITOR BAÚ</a>
-      </div>
       <div class="clock" id="relogio">--:--:--</div>
       <div class="sub" id="subtitulo">Carregando malha…</div>
     </div>
@@ -429,6 +426,11 @@ function pintar(){
     const fimLojaSemRetorno=ehFimLojaMacro(last.ev) && !voltou;
     const emTransito = fimLojaTardio || (!fimLojaSemRetorno && (last.ev==='INICIO_VIAGEM'||last.ev==='REINICIO_VIAGEM'||last.ev==='RETORNO'||/PARADA|BANHEIRO|EXTRAORD/.test(last.ev||'')));
     const evAberto=['INICIO_VIAGEM','REINICIO_VIAGEM','RETORNO','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','PARADA_EXTRA','PARADA_REFEICAO','CV_FIM_LOJA','LS_FIM_MACRO'];
+    // Abertura de baú depois do FIM, sem início novo, é sensor atrasado — não reabre a grade.
+    const iFim=lista.map((e,i)=>(e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL')?i:-1).filter(i=>i>=0).pop();
+    const iIni=lista.map((e,i)=>(e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM')?i:-1).filter(i=>i>=0).pop();
+    const bauAtrasado=(last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO') && iFim>=0 && (iIni==null || iIni<iFim);
+    if(bauAtrasado) return;
     const vivo = evAberto.indexOf(last.ev)>=0 || ehFimLojaMacro(last.ev) || aindaNaRua(last.ev);
     if(last.ev==='FIM_FINAL' || last.ev==='FIM_VIAGEM' && !opTrocaMacro((mapaCtrl[pl]||{}).op)) return;
     if(!vivo) return;
@@ -447,7 +449,6 @@ function pintar(){
   const tb=document.getElementById('tbody');
   const html=linhas.join('')||'<tr><td colspan="7" class="empty">Aguardando saídas</td></tr>';
   if(tb && tb.innerHTML!==html) tb.innerHTML=html;
-
   Object.keys(por).forEach(pl=>{
     const lista=por[pl]||[]; const info=mapaCtrl[pl]||{};
     lista.filter(e=>e.ev==='FIM_VIAGEM'||e.ev==='HT_FIM_CD'||String(e.ev).indexOf('FIM_CD')>=0).forEach(lastF=>{
@@ -502,17 +503,17 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261010d';
+const CCO_VER='20261015a';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
     const txt=await (await fetch(base+(base.slice(-1)==='/'?'index.html':'')+'?_gh='+Date.now(),{cache:'no-store'})).text();
     const m=txt.match(/CCO_VER[:'"\s=]+([0-9a-zA-Z]+)/);
     const rem=m?m[1]:'';
-    if(rem && rem!==CCO_VER && rem.length>=8){
+    if(rem && rem!==CCO_VER){
       const c=document.getElementById('swapCover');
       if(c) c.style.display='block';
-      setTimeout(()=>location.reload(), 300);
+      location.reload();
     }
   }catch(e){}
 }
