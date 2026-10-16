@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261015m -->
+<!-- CCO_VER:20261015n -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -456,8 +456,9 @@ function pintar(){
     const fins=lista.map((e,i)=>(e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL')?i:-1).filter(i=>i>=0);
     const ultimoFim=fins.length?fins[fins.length-1]:-1;
     const fimAposRetorno=iRet2>=0 && ultimoFim>iRet2;
-    if(troca && fimAposRetorno) return;          // 2º FIM depois do retorno = chegou
-    if(!troca && ultimoFim>=0 && ultimoFim>=(iIni||0)) return; // TL e demais: FIM encerra
+    // FIM no CD depois de retorno = chegou. ABERTURA depois disso é carga/limpeza — ignora.
+    if(fimAposRetorno) return;
+    if(!troca && ultimoFim>=0) return;
     const vivo = evAberto.indexOf(last.ev)>=0 || ehFimLojaMacro(last.ev) || aindaNaRua(last.ev) || (lastTrip && !ehFimReal(lastTrip.ev)) || (troca && !fimAposRetorno);
     if(!vivo) return;
     if(fimLojaTardio) last=Object.assign({}, last, {ev:'RETORNO',hora:(lista[iRet]||last).hora,det:(lista[iRet]||last).det||''});
@@ -542,7 +543,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261015m';
+const CCO_VER='20261015n';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
