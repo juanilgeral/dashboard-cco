@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261015n -->
+<!-- CCO_VER:20261016a -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -213,7 +213,7 @@ function destDaViagem(info, lista){
   return dests[i]||dests[0]||'';
 }
 function ehParada(ev,det){const e=evNome(ev); const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return /PARADA|BANHEIRO|EXTRAORD/.test(e+' '+d) && !/REFEICAO/.test(e+' '+d);} function operacional(ev){const e=evNome(ev); return ['PORTA_MOTORISTA','PORTA_CARONA','PORTA_MOT_TEMPO','PORTA_CAR_TEMPO','PORTA_MOT_NAO_AUT','PORTA_CAR_NAO_AUT','PANICO','VELOCIDADE','RPM','PARADO_EXCEDIDO','DESENGATE'].indexOf(e)>=0;}
-function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(ehParada(ev,det)) return 'PARADA EXTRA'; if(e==='PARADA_REFEICAO'||/REFEICAO/.test(d)) return 'PARADA RF'; if(e==='FECHAMENTO_BAU')return 'FECHAMENTO BAÚ';if(e==='REINICIO_VIAGEM')return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM'; if(e==='PORTA_MOTORISTA')return 'PORTA MOTORISTA'; if(e==='PORTA_CARONA')return 'PORTA CARONA'; if(e==='PORTA_MOT_TEMPO')return 'PORTA MOT. TEMPO'; if(e==='PORTA_CAR_TEMPO')return 'PORTA CAR. TEMPO'; if(e==='PORTA_MOT_NAO_AUT')return 'PORTA MOT. NÃO AUT.'; if(e==='PORTA_CAR_NAO_AUT')return 'PORTA CAR. NÃO AUT.'; if(e==='PANICO')return 'PÂNICO'; if(e==='VELOCIDADE')return 'VELOCIDADE'; if(e==='RPM')return 'RPM'; if(e==='PARADO_EXCEDIDO')return 'PARADO EXCEDIDO'; if(e==='DESENGATE')return 'DESENGATE'; return String(ev||'').replace(/_/g,' ');}
+function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(ehParada(ev,det)) return 'PARADA EXTRA'; if(e==='PARADA_REFEICAO'||/REFEICAO/.test(d)) return 'PARADA RF'; if(e==='LOCALIZACAO')return det||'LOCAL'; if(e==='FECHAMENTO_BAU')return 'FECHAMENTO BAÚ';if(e==='REINICIO_VIAGEM')return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM'; if(e==='PORTA_MOTORISTA')return 'PORTA MOTORISTA'; if(e==='PORTA_CARONA')return 'PORTA CARONA'; if(e==='PORTA_MOT_TEMPO')return 'PORTA MOT. TEMPO'; if(e==='PORTA_CAR_TEMPO')return 'PORTA CAR. TEMPO'; if(e==='PORTA_MOT_NAO_AUT')return 'PORTA MOT. NÃO AUT.'; if(e==='PORTA_CAR_NAO_AUT')return 'PORTA CAR. NÃO AUT.'; if(e==='PANICO')return 'PÂNICO'; if(e==='VELOCIDADE')return 'VELOCIDADE'; if(e==='RPM')return 'RPM'; if(e==='PARADO_EXCEDIDO')return 'PARADO EXCEDIDO'; if(e==='DESENGATE')return 'DESENGATE'; return String(ev||'').replace(/_/g,' ');}
 function clsEv(ev){const e=evNome(ev); if(e==='PANICO')return 'e-fim'; if(operacional(e))return 'e-ret'; if(e.includes('BAU')||e.includes('DESCARREG'))return 'e-bau';if(e.includes('FIM'))return 'e-fim';if(e.includes('INICIO'))return 'e-ini';if(e.includes('RETORNO')||e.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
 async function pull(url){
   const ctrl=new AbortController();
@@ -512,6 +512,7 @@ function pintar(){
   if(kpis && kpis.dataset.sig!==kpiHtml){ kpis.dataset.sig=kpiHtml; kpis.innerHTML=kpiHtml; }
   const todos=(CACHE.todos&&CACHE.todos.length?CACHE.todos:evs).filter(e => {
     if(e.ev==='BAU_IGNORADO') return false;
+    if(e.ev==='LOCALIZACAO') return true;
     // Porta, pânico e demais operacionais aparecem em qualquer filtro.
     if(operacional(e.ev)) return true;
     return passaOp(mapaCtrl[e.placa]) || !mapaCtrl[e.placa];
@@ -543,7 +544,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261015n';
+const CCO_VER='20261016a';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
