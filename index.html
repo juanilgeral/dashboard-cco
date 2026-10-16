@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261015h -->
+<!-- CCO_VER:20261015i -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -418,9 +418,6 @@ function pintar(){
   let viagem=0,loja=0,bau=0,fim=0,alm=0; const linhas=[];
   placas.forEach(pl=>{
     const lista=por[pl]||[]; if(!lista.length) return;
-    // Só entra na grade quem está no Controle de hoje e ainda não tem chegada
-    const info0=mapaCtrl[pl]||{};
-    if(!info0.op || info0.chegou) return;
     let last=(lista.slice().reverse().find(e=>!operacional(e.ev))||lista[lista.length-1]||{});
     const destNow0=destPreferido(mapaCtrl[pl]||{},lista,last);
     const final=fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista);
@@ -438,9 +435,11 @@ function pintar(){
     const bauAtrasado=(last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO') && iFim>=0 && (iIni==null || iIni<iFim);
     if(bauAtrasado) return;
     // Abertura antiga sem operação no Controle e sem evento recente de viagem = não está na rua
-    const soBauVelho = (last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO') &&
-                       !(mapaCtrl[pl]||{}).op && !eventoRecente(last.hora, 90);
-    if(soBauVelho) return;
+    // Abertura como último evento, mas já houve FIM ou RETORNO depois = não está mais na loja
+    const iBau=lista.map((e,i)=>(e.ev==='ABERTURA_BAU'||e.ev==='INICIO_DESCARREGAMENTO')?i:-1).filter(i=>i>=0).pop();
+    const depoisBau=iBau>=0?lista.slice(iBau+1):[];
+    const saiuDepois=depoisBau.some(e=>e.ev==='REINICIO_VIAGEM'||e.ev==='RETORNO'||e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL'||ehFimLojaMacro(e.ev));
+    if((last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO') && saiuDepois) return;
     const vivo = evAberto.indexOf(last.ev)>=0 || ehFimLojaMacro(last.ev) || aindaNaRua(last.ev);
     if(last.ev==='FIM_FINAL' || last.ev==='FIM_VIAGEM' && !opTrocaMacro((mapaCtrl[pl]||{}).op)) return;
     if(!vivo) return;
@@ -526,7 +525,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261015h';
+const CCO_VER='20261015i';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
