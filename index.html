@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261015i -->
+<!-- CCO_VER:20261015k -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -309,12 +309,21 @@ async function carregar(){
   });
   const evsVivos=[]; Object.keys(por).forEach(pl=>por[pl].forEach(e=>evsVivos.push(e)));
 
+  // Fallback: placa sem linha hoje no Controle → usa a última linha dessa placa (qualquer dia)
+  const ultCtrl={};
+  for(let i=1;i<ctrl.length;i++){
+    const r=ctrl[i]; if(!r) continue;
+    const pl=extrairPlaca(r[iV]); if(!pl) continue;
+    const dest=iDest>=0?String(r[iDest]||'').trim():'';
+    ultCtrl[pl]={op:String(r[iOp]||'').trim().toUpperCase(),mot:String(r[iMot]||'').trim(),dest:dest,dests:dest?[dest]:[]};
+  }
   evs.forEach(e=>{
-    if(mapaCtrl[e.placa]) return;
+    if(mapaCtrl[e.placa] && mapaCtrl[e.placa].op) return;
+    if(ultCtrl[e.placa] && ultCtrl[e.placa].op){ mapaCtrl[e.placa]=ultCtrl[e.placa]; return; }
     const det=String(e.det||'').toUpperCase();
     const mop=det.match(/OP\s*=\s*([A-Z]{2})/);
     const mmot=det.match(/MOT\s*=\s*([^|]+)/);
-    mapaCtrl[e.placa]={op:mop?mop[1]:'',mot:mmot?mmot[1].trim():'',dest:'',dests:[]};
+    if(!mapaCtrl[e.placa]) mapaCtrl[e.placa]={op:mop?mop[1]:'',mot:mmot?mmot[1].trim():'',dest:'',dests:[]};
   });
   const placas=Object.keys(por).sort((a,b)=>((mapaCtrl[a]||{}).mot||a).localeCompare((mapaCtrl[b]||{}).mot||b,'pt-BR'));
   CACHE={placas,evs:evsVivos||evs,todos:evs,mapaCtrl};
@@ -434,13 +443,14 @@ function pintar(){
     const iIni=lista.map((e,i)=>(e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM')?i:-1).filter(i=>i>=0).pop();
     const bauAtrasado=(last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO') && iFim>=0 && (iIni==null || iIni<iFim);
     if(bauAtrasado) return;
-    // Abertura antiga sem operação no Controle e sem evento recente de viagem = não está na rua
-    // Abertura como último evento, mas já houve FIM ou RETORNO depois = não está mais na loja
-    const iBau=lista.map((e,i)=>(e.ev==='ABERTURA_BAU'||e.ev==='INICIO_DESCARREGAMENTO')?i:-1).filter(i=>i>=0).pop();
-    const depoisBau=iBau>=0?lista.slice(iBau+1):[];
-    const saiuDepois=depoisBau.some(e=>e.ev==='REINICIO_VIAGEM'||e.ev==='RETORNO'||e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL'||ehFimLojaMacro(e.ev));
-    if((last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO') && saiuDepois) return;
-    const vivo = evAberto.indexOf(last.ev)>=0 || ehFimLojaMacro(last.ev) || aindaNaRua(last.ev);
+    // Sensor de baú sozinho não mantém a placa na grade. Precisa de evento de viagem recente.
+    const tripEv=['INICIO_VIAGEM','REINICIO_VIAGEM','RETORNO','CHEGADA_CLIENTE','FIM_VIAGEM','FIM_FINAL','CV_FIM_LOJA','LS_FIM_MACRO','HT_FIM_CD','PARADA_EXTRA','PARADA_REFEICAO'];
+    const lastTrip=lista.slice().reverse().find(e=>tripEv.indexOf(e.ev)>=0||ehFimLojaMacro(e.ev));
+    const soSensorBau=!lastTrip && (last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO');
+    if(soSensorBau) return;
+    // Se o último evento de viagem é FIM real (não fim de loja), já encerrou
+    if(lastTrip && ehFimReal(lastTrip.ev) && !ehFimLojaMacro(lastTrip.ev)) return;
+    const vivo = evAberto.indexOf(last.ev)>=0 || ehFimLojaMacro(last.ev) || aindaNaRua(last.ev) || (lastTrip && !ehFimReal(lastTrip.ev));
     if(last.ev==='FIM_FINAL' || last.ev==='FIM_VIAGEM' && !opTrocaMacro((mapaCtrl[pl]||{}).op)) return;
     if(!vivo) return;
     if(fimLojaTardio) last=Object.assign({}, last, {ev:'RETORNO',hora:(lista[iRet]||last).hora,det:(lista[iRet]||last).det||''});
@@ -525,7 +535,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261015i';
+const CCO_VER='20261015k';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
