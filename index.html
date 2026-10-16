@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261015f -->
+<!-- CCO_VER:20261015g -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -432,6 +432,10 @@ function pintar(){
     const iIni=lista.map((e,i)=>(e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM')?i:-1).filter(i=>i>=0).pop();
     const bauAtrasado=(last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO') && iFim>=0 && (iIni==null || iIni<iFim);
     if(bauAtrasado) return;
+    // Abertura antiga sem operação no Controle e sem evento recente de viagem = não está na rua
+    const soBauVelho = (last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO') &&
+                       !(mapaCtrl[pl]||{}).op && !eventoRecente(last.hora, 90);
+    if(soBauVelho) return;
     const vivo = evAberto.indexOf(last.ev)>=0 || ehFimLojaMacro(last.ev) || aindaNaRua(last.ev);
     if(last.ev==='FIM_FINAL' || last.ev==='FIM_VIAGEM' && !opTrocaMacro((mapaCtrl[pl]||{}).op)) return;
     if(!vivo) return;
@@ -517,7 +521,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261015f';
+const CCO_VER='20261015g';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
