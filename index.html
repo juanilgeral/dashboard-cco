@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261016a -->
+<!-- CCO_VER:20261016b -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -427,7 +427,7 @@ function pintar(){
   let viagem=0,loja=0,bau=0,fim=0,alm=0; const linhas=[];
   placas.forEach(pl=>{
     const lista=por[pl]||[]; if(!lista.length) return;
-    let last=(lista.slice().reverse().find(e=>!operacional(e.ev) && e.ev!=='BAU_IGNORADO' && e.ev!=='SEM_LANC' && e.ev!=='IGNORA_CD')||{});
+    let last=(lista.slice().reverse().find(e=>!operacional(e.ev) && e.ev!=='BAU_IGNORADO' && e.ev!=='SEM_LANC' && e.ev!=='IGNORA_CD' && e.ev!=='LOCALIZACAO')||{});
     if(!last.ev) return;
     const destNow0=destPreferido(mapaCtrl[pl]||{},lista,last);
     const final=fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista);
@@ -447,7 +447,7 @@ function pintar(){
     // Sensor de baú sozinho não mantém a placa. Precisa de evento de viagem.
     const tripEv=['INICIO_VIAGEM','REINICIO_VIAGEM','RETORNO','CHEGADA_CLIENTE','FIM_VIAGEM','FIM_FINAL','CV_FIM_LOJA','LS_FIM_MACRO','HT_FIM_CD','PARADA_EXTRA','PARADA_REFEICAO'];
     const lastTrip=lista.slice().reverse().find(e=>tripEv.indexOf(e.ev)>=0||ehFimLojaMacro(e.ev));
-    if(last.ev==='BAU_IGNORADO') return;
+    if(last.ev==='BAU_IGNORADO' || last.ev==='LOCALIZACAO') return;
     if(!lastTrip && (last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO')) return;
     // LS/CV/HT: 1º FIM é fim de loja (continua). 2º FIM depois de RETORNO = chegou no CD.
     const op=String((mapaCtrl[pl]||{}).op||'').toUpperCase();
@@ -544,7 +544,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261016a';
+const CCO_VER='20261016b';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
