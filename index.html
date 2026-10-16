@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261016d -->
+<!-- CCO_VER:20261016e -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -449,6 +449,8 @@ function pintar(){
     const tripEv=['INICIO_VIAGEM','REINICIO_VIAGEM','RETORNO','CHEGADA_CLIENTE','FIM_VIAGEM','FIM_FINAL','CV_FIM_LOJA','LS_FIM_MACRO','HT_FIM_CD','PARADA_EXTRA','PARADA_REFEICAO'];
     const lastTrip=lista.slice().reverse().find(e=>tripEv.indexOf(e.ev)>=0||ehFimLojaMacro(e.ev));
     if(last.ev==='BAU_IGNORADO' || last.ev==='LOCALIZACAO') return;
+    const locEv=lista.slice().reverse().find(e=>e.ev==='LOCALIZACAO');
+    if(!locEv && last.hora && horaNum(last.hora) < (agoraBRT().getHours()*60+agoraBRT().getMinutes()-360)) return;
     if(!lastTrip && (last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO')) return;
     // LS/CV/HT: 1º FIM é fim de loja (continua). 2º FIM depois de RETORNO = chegou no CD.
     const op=String((mapaCtrl[pl]||{}).op||'').toUpperCase();
@@ -547,7 +549,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261016d';
+const CCO_VER='20261016e';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
