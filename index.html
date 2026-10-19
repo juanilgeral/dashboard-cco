@@ -72,6 +72,9 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
 .tick time{font-family:"Share Tech Mono",monospace;color:var(--cyan)}
 @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .empty{padding:24px;text-align:center;color:var(--muted)}
+.alert-row{background:rgba(255,59,92,.12)!important}
+.alert-bau{background:rgba(255,176,32,.14)!important}
+#buscaPlaca:focus{outline:none;border-color:var(--cyan)}
 @media (orientation:portrait),(max-width:900px){
   html,body{overflow:auto}
   .wrap{height:auto;min-height:100%}
@@ -92,8 +95,11 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12
     </div>
     <div class="status-box">
       <div class="filtros" id="filtros"></div>
+      <input id="buscaPlaca" type="text" placeholder="Buscar placa..." style="background:rgba(8,14,24,.9);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:5px 12px;font:700 .85rem Rajdhani,sans-serif;width:140px;margin-top:6px" oninput="aplicarBusca()">
       <div class="clock" id="relogio">--:--:--</div>
       <div class="sub" id="subtitulo">Carregando malha…</div>
+      <div class="sub" id="ultimaSync" style="font-size:.75rem;color:var(--lime)">—</div>
+      <div class="sub" id="alertasInfo" style="font-size:.75rem;color:var(--red)"></div>
     </div>
   </header>
   <div class="kpis" id="kpis"></div>
@@ -246,12 +252,14 @@ function voltarHoje(){
 async function carregar(){
   const iso=isoOperacional(), alvo=br(iso);
   document.getElementById('subtitulo').textContent='Dia operacional '+alvo+' · Controle + Trucks';
+  document.getElementById('ultimaSync').textContent='Última sync: '+agoraBRT().toLocaleTimeString('pt-BR');
   const ontem=br(isoOntem());
   const alvos=agoraBRT().getHours()<8 ? [alvo,ontem] : [alvo];
   let log=[],ctrl=[];
   try{log=await pullDia(TRUCKS, alvos);}catch(e){ try{log=await pull(TRUCKS);}catch(e2){} }
   try{ctrl=await pull(CONTROLE);}catch(e){}
   const evs=[];
+  let sinaisHoje = 0;
   for(let i=1;i<log.length;i++){
     const r=log[i]; if(!r||!r[0]) continue;
     const dia=String(r[0]);
@@ -262,11 +270,14 @@ async function carregar(){
       const det=String(r[3]||'');
       if(/INICIO|REINICIO|DESTINO|CD/i.test(det)){
         evs.push({ev:'RETORNO',placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
+        if(dia.indexOf(alvo)===0) sinaisHoje++;
       }
       continue;
     }
     var det=String(r[3]||''); var ev2=ev; if(/PARADA|BANHEIRO|EXTRAORD/i.test(ev+' '+det) && !/REFEICAO/i.test(ev)) ev2='PARADA_EXTRA'; evs.push({ev:ev2,placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
+    if(dia.indexOf(alvo)===0) sinaisHoje++;
   }
+  CACHE.sinaisHoje = sinaisHoje;
   const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase().replace(/"/g,''));
   let iData=h.indexOf('DATA'); if(iData<0) iData=0;
   const iOp=h.indexOf('OP')<0?2:h.indexOf('OP');
@@ -331,6 +342,7 @@ async function carregar(){
 }
 
 let FILTRO_OP = '';
+let BUSCA_PLACA = '';
 try{ FILTRO_OP = localStorage.getItem('cco_filtro_op') || ''; }catch(e){}
 let CACHE = {placas:[], evs:[], todos:[], mapaCtrl:{}};
 function histKey(o){return [o.placa,o.hora].join('|');}
@@ -381,6 +393,10 @@ function aplicarFiltro(op){
   renderFiltros();
   pintar();
 }
+function aplicarBusca(){
+  BUSCA_PLACA = (document.getElementById('buscaPlaca')?.value || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  pintar();
+}
 function renderFiltros(){
   const box = document.getElementById('filtros');
   if(!box) return;
@@ -393,10 +409,14 @@ function passaOp(info){
   if(!FILTRO_OP) return true;
   return String((info||{}).op||'').toUpperCase()===FILTRO_OP;
 }
+function passaBusca(pl){
+  if(!BUSCA_PLACA) return true;
+  return String(pl||'').toUpperCase().includes(BUSCA_PLACA);
+}
 function pintar(){
   const mapaCtrl=CACHE.mapaCtrl||{};
   const evs=(CACHE.evs||[]).filter(e => passaOp(mapaCtrl[e.placa]));
-  const placas=(CACHE.placas||[]).filter(pl => passaOp(mapaCtrl[pl]));
+  const placas=(CACHE.placas||[]).filter(pl => passaOp(mapaCtrl[pl]) && passaBusca(pl));
   const por={}; evs.forEach(e=>{(por[e.placa]=por[e.placa]||[]).push(e);});
   Object.keys(por).forEach(pl=>{
     const lista=por[pl];
@@ -474,7 +494,11 @@ function pintar(){
     const destNow=destPreferido(info,lista,last);
     const locEv=lista.slice().reverse().find(e=>e.ev==='LOCALIZACAO');
     const local=locEv?locEv.det:'—';
-    linhas.push('<tr><td style="font-weight:800">'+pl+'</td><td>'+(info.op?'<span class="pill '+opClass(info.op)+'">'+info.op+'</span>':'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+(destNow||'—')+'</td><td>'+local+'</td><td>'+(st==='RETORNO CD'&&(last.ev==='RETORNO'||destEhCd(destDoDetalhe(last.det))||destEhCd(destNow))?'RETORNO CD':(last.ev?rotuloEv(last.ev,last.det):'—'))+'</td><td style="font-family:Share Tech Mono,monospace">'+(last.hora||'—')+'</td><td><span class="pill '+cls+'">'+st+'</span></td></tr>');
+    let rowClass = '';
+    const evLast = String(last.ev||'').toUpperCase();
+    if(/PANICO|PÂNICO|PANIC/.test(evLast) || /PANICO|PÂNICO/.test(String(last.det||'').toUpperCase())) rowClass = 'alert-row';
+    else if(st==='BAÚ ABERTO') rowClass = 'alert-bau';
+    linhas.push('<tr class="'+rowClass+'"><td style="font-weight:800">'+pl+'</td><td>'+(info.op?'<span class="pill '+opClass(info.op)+'">'+info.op+'</span>':'—')+'</td><td>'+(info.mot||'—')+'</td><td>'+(destNow||'—')+'</td><td>'+local+'</td><td>'+(st==='RETORNO CD'&&(last.ev==='RETORNO'||destEhCd(destDoDetalhe(last.det))||destEhCd(destNow))?'RETORNO CD':(last.ev?rotuloEv(last.ev,last.det):'—'))+'</td><td style="font-family:Share Tech Mono,monospace">'+(last.hora||'—')+'</td><td><span class="pill '+cls+'">'+st+'</span></td></tr>');
   });
   const tb=document.getElementById('tbody');
   const html=linhas.join('')||'<tr><td colspan="8" class="empty">Aguardando saídas</td></tr>';
@@ -511,8 +535,11 @@ function pintar(){
   }
 
   const kpis=document.getElementById('kpis');
-  var kpiHtml='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+evs.length+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
+  var kpiHtml='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+(CACHE.sinaisHoje||0)+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
   if(kpis && kpis.dataset.sig!==kpiHtml){ kpis.dataset.sig=kpiHtml; kpis.innerHTML=kpiHtml; }
+  const alertas = linhas.filter(l=>l.includes('alert-row')||l.includes('alert-bau')).length;
+  const ai = document.getElementById('alertasInfo');
+  if(ai) ai.textContent = alertas ? alertas+' alerta(s) ativo(s)' : '';
   const todos=(CACHE.todos&&CACHE.todos.length?CACHE.todos:evs).filter(e => {
     if(e.ev==='BAU_IGNORADO') return false;
     if(e.ev==='LOCALIZACAO') return true;
