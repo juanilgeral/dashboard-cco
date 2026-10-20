@@ -263,6 +263,8 @@ async function carregar(){
   try{ctrl=await pull(CONTROLE);}catch(e){}
   const evs=[];
   let sinaisHoje = 0;
+  const hojeDia = alvo.split('/')[0]; // "20"
+  const hojeMes = alvo.split('/')[1]; // "10"
   for(let i=1;i<log.length;i++){
     const r=log[i]; if(!r||!r[0]) continue;
     const dia=String(r[0]);
@@ -273,12 +275,12 @@ async function carregar(){
       const det=String(r[3]||'');
       if(/INICIO|REINICIO|DESTINO|CD/i.test(det)){
         evs.push({ev:'RETORNO',placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
-        if(dia.indexOf(alvo)===0 || (agoraBRT().getHours()<6 && dia.indexOf(ontem)===0)) sinaisHoje++;
+        if(dia.includes(hojeDia+'/'+hojeMes) || dia.includes(alvo) || (agoraBRT().getHours()<8 && dia.includes(ontem.split('/')[0]+'/'+ontem.split('/')[1]))) sinaisHoje++;
       }
       continue;
     }
     var det=String(r[3]||''); var ev2=ev; if(/PARADA|BANHEIRO|EXTRAORD/i.test(ev+' '+det) && !/REFEICAO/i.test(ev)) ev2='PARADA_EXTRA'; evs.push({ev:ev2,placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
-    if(dia.indexOf(alvo)===0 || (agoraBRT().getHours()<6 && dia.indexOf(ontem)===0)) sinaisHoje++;
+    if(dia.includes(hojeDia+'/'+hojeMes) || dia.includes(alvo) || (agoraBRT().getHours()<8 && dia.includes(ontem.split('/')[0]+'/'+ontem.split('/')[1]))) sinaisHoje++;
   }
   CACHE.sinaisHoje = sinaisHoje;
   const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase().replace(/"/g,''));
