@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261016f -->
+<!-- CCO_VER:20261020a -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -275,12 +275,18 @@ async function carregar(){
       const det=String(r[3]||'');
       if(/INICIO|REINICIO|DESTINO|CD/i.test(det)){
         evs.push({ev:'RETORNO',placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
-        if(dia.includes(hojeDia+'/'+hojeMes) || dia.includes(alvo) || (agoraBRT().getHours()<8 && dia.includes(ontem.split('/')[0]+'/'+ontem.split('/')[1]))) sinaisHoje++;
+        const diaNorm = dia.replace(/[^0-9]/g,'');
+    const hojeNorm = (hojeDia+hojeMes).padStart(4,'0');
+    const ontemNorm = (ontem.split('/')[0]+ontem.split('/')[1]).padStart(4,'0');
+    if(diaNorm.includes(hojeNorm) || dia.includes(alvo) || (agoraBRT().getHours()<8 && (diaNorm.includes(ontemNorm) || dia.includes(ontem)))) sinaisHoje++;
       }
       continue;
     }
     var det=String(r[3]||''); var ev2=ev; if(/PARADA|BANHEIRO|EXTRAORD/i.test(ev+' '+det) && !/REFEICAO/i.test(ev)) ev2='PARADA_EXTRA'; evs.push({ev:ev2,placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
-    if(dia.includes(hojeDia+'/'+hojeMes) || dia.includes(alvo) || (agoraBRT().getHours()<8 && dia.includes(ontem.split('/')[0]+'/'+ontem.split('/')[1]))) sinaisHoje++;
+    const diaNorm = dia.replace(/[^0-9]/g,'');
+    const hojeNorm = (hojeDia+hojeMes).padStart(4,'0');
+    const ontemNorm = (ontem.split('/')[0]+ontem.split('/')[1]).padStart(4,'0');
+    if(diaNorm.includes(hojeNorm) || dia.includes(alvo) || (agoraBRT().getHours()<8 && (diaNorm.includes(ontemNorm) || dia.includes(ontem)))) sinaisHoje++;
   }
   CACHE.sinaisHoje = sinaisHoje;
   const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase().replace(/"/g,''));
@@ -297,7 +303,10 @@ async function carregar(){
     const dest=iDest>=0?String(r[iDest]||'').trim():'';
     const iCheg=h.indexOf('CHEGADA_VEÍCULO_CD');
     const cheg=iCheg>=0?String(r[iCheg]||'').trim():'';
-    const nxt={op:String(r[iOp]||'').trim().toUpperCase(),mot:String(r[iMot]||'').trim(),dest:dest,dests: dest?[dest]:[],chegou:!!cheg};
+    const iSaida = h.findIndex(x => /SAIDA|SAÍDA|HORA.?SAIDA|HORARIO.?SAIDA|SAIDA.?PREV/i.test(x));
+    const saidaRaw = iSaida>=0 ? String(r[iSaida]||'').trim() : '';
+    const saida = hh(saidaRaw) || '';
+    const nxt={op:String(r[iOp]||'').trim().toUpperCase(),mot:String(r[iMot]||'').trim(),dest:dest,dests: dest?[dest]:[],chegou:!!cheg,saida:saida};
     const prev=mapaCtrl[pl];
     if(!prev) mapaCtrl[pl]=nxt;
     else {
@@ -487,6 +496,13 @@ function pintar(){
     if(!troca && ultimoFim>=0) return;
     const vivo = evAberto.indexOf(last.ev)>=0 || ehFimLojaMacro(last.ev) || aindaNaRua(last.ev) || (lastTrip && !ehFimReal(lastTrip.ev)) || (troca && !fimAposRetorno);
     if(!vivo) return;
+    // Só considerar em viagem/trânsito se o horário de saída da planilha já passou
+    const infoSaida = mapaCtrl[pl]||{};
+    const saidaH = infoSaida.saida || '';
+    const saidaN = horaNum(saidaH);
+    const agoraN = agoraBRT().getHours()*60 + agoraBRT().getMinutes();
+    const temInicioRecente = lista.some(e => (e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM') && eventoRecente(e.hora, 20));
+    if(saidaN >= 0 && agoraN < saidaN && !temInicioRecente) return;
     if(fimLojaTardio) last=Object.assign({}, last, {ev:'RETORNO',hora:(lista[iRet]||last).hora,det:(lista[iRet]||last).det||''});
     const jaFim=loadHist(DATA_ISO).some(h=>h.placa===pl && (h.hora||'')>=(last.hora||''));
     if(jaFim && destEhCd(destNow0)) return;
@@ -582,7 +598,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261016f';
+const CCO_VER='20261020a';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
