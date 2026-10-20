@@ -560,7 +560,9 @@ function pintar(){
   const ticks=recent.slice(0,50);
   const tickHtml=ticks.map(e=>{const info=mapaCtrl[e.placa]||{};return '<span class="tick '+clsEv(e.ev)+'"><time>'+e.hora+'</time><b>'+rotuloEv(e.ev,e.det)+'</b> '+e.placa+(info.mot?' · '+info.mot:'')+(info.op?' · '+info.op:'')+'</span>';}).join('');
   const tk=document.getElementById('ticker');
-  const next=(tickHtml+tickHtml)||'<span class="tick">Aguardando eventos…</span>';
+  // Se não houver veículos em operação hoje, limpa o ticker
+  const semOperacao = (typeof ativo !== 'undefined' && ativo === 0) || (CACHE.sinaisHoje||0) === 0;
+  const next = semOperacao ? '<span class="tick">Sem operações no dia</span>' : ((tickHtml+tickHtml)||'<span class="tick">Aguardando eventos…</span>');
   if(tk && tk.dataset.sig!==next){ tk.dataset.sig=next; tk.innerHTML=next; }
   if(tk) tk.style.animationDuration='150s';
 }
