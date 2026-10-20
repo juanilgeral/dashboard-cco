@@ -599,7 +599,7 @@ checarGithub();setInterval(checarGithub,90000);
 
 (function(){ const el=document.getElementById('fData'); DATA_ISO=isoOperacional(); if(el) el.value=DATA_ISO; })();
 carregar();
-setInterval(function(){ if(DATA_ISO!==isoOperacional()) location.reload(); else carregar(); },10000);
+setInterval(function(){ if(DATA_ISO!==isoOperacional()) location.reload(); else carregar(); },120000); // a cada 2 minutos
 setInterval(function(){ location.reload(); }, 15*60*1000);
 </script>
 </body>
