@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CCO JUANIL — Monitor Operacional</title>
-<!-- CCO_VER:20261020c -->
+<!-- CCO_VER:20261020d -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -160,12 +160,7 @@ function opClass(op){const o=String(op||'').toUpperCase();if(o==='TL')return 'p-
 function statusDe(evs, op, dest){
   const recentStart = (evs||[]).slice().reverse().find(e=>e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM');
   if(recentStart && eventoRecente(recentStart.hora, 240)) return ['EM VIAGEM','p-ok'];
-  const last=evs[evs.length-1]||{};let e=last.ev||'';
-  // Ignora eventos puramente operacionais/sensores para o status principal
-  if(operacional(e) || e==='LOCALIZACAO'){
-    const prev = (evs||[]).slice().reverse().find(x => !operacional(x.ev) && x.ev !== 'LOCALIZACAO' && x.ev !== 'BAU_IGNORADO');
-    if(prev) e = prev.ev;
-  }if(e==='FECHAMENTO_BAU')return['NA LOJA','p-loja'];if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE')return['NA LOJA','p-loja'];if(ehFimLojaMacro(e))return['RETORNO CD','p-run'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(ehParada(e,last.det))return['PARADA','p-loja']; if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(e.indexOf('FIM_CD')>=0||e==='HT_FIM_CD')return['FIM','p-off'];if((e==='FIM_VIAGEM'||e==='FIM_FINAL') && destEhCd(dest||destDoDetalhe(last.det))) return['FIM','p-off'];if((e==='FIM_VIAGEM'||e==='FIM_FINAL') && opTrocaMacro(op) && !destEhCd(dest||destDoDetalhe(last.det))) return['RETORNO CD','p-run'];if(ehFimReal(e)||e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM'){const dlog=destDoDetalhe(last.det); if(dlog && !destEhCd(dlog)) return['EM VIAGEM','p-ok']; if(dest && !destEhCd(dest)) return['EM VIAGEM','p-ok']; if(destEhCd(dest)||destEhCd(dlog)||e==='RETORNO') return ['RETORNO CD','p-run']; return['EM VIAGEM','p-ok'];}return[e||'SINAL','p-run'];}
+  const last=evs[evs.length-1]||{};const e=last.ev||'';if(e==='FECHAMENTO_BAU')return['NA LOJA','p-loja'];if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return['BAÚ ABERTO','p-loja'];if(e==='CHEGADA_CLIENTE')return['NA LOJA','p-loja'];if(ehFimLojaMacro(e))return['RETORNO CD','p-run'];if(e==='RETORNO')return['RETORNO CD','p-run'];if(ehParada(e,last.det))return['PARADA','p-loja']; if(e==='PARADA_REFEICAO')return['ALMOÇO','p-loja'];if(e.indexOf('FIM_CD')>=0||e==='HT_FIM_CD')return['FIM','p-off'];if((e==='FIM_VIAGEM'||e==='FIM_FINAL') && destEhCd(dest||destDoDetalhe(last.det))) return['FIM','p-off'];if((e==='FIM_VIAGEM'||e==='FIM_FINAL') && opTrocaMacro(op) && !destEhCd(dest||destDoDetalhe(last.det))) return['RETORNO CD','p-run'];if(ehFimReal(e)||e==='FIM_VIAGEM'||e==='FIM_FINAL')return['FIM','p-off'];if(e==='INICIO_VIAGEM'||e==='REINICIO_VIAGEM'){const dlog=destDoDetalhe(last.det); if(dlog && !destEhCd(dlog)) return['EM VIAGEM','p-ok']; if(dest && !destEhCd(dest)) return['EM VIAGEM','p-ok']; if(destEhCd(dest)||destEhCd(dlog)||e==='RETORNO') return ['RETORNO CD','p-run']; return['EM VIAGEM','p-ok'];}return[e||'SINAL','p-run'];}
 function destDoDetalhe(det){
   let t=String(det||'').replace(/\n/g,' ').replace(/SENHA\s*:\s*\S+/gi,' ').replace(/\s+/g,' ').trim();
   let m=t.match(/DESTINO\s*:\s*([^|]+)/i);
@@ -227,8 +222,7 @@ function destDaViagem(info, lista){
   return dests[i]||dests[0]||'';
 }
 function ehParada(ev,det){const e=evNome(ev); const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return /PARADA|BANHEIRO|EXTRAORD/.test(e+' '+d) && !/REFEICAO/.test(e+' '+d);} function operacional(ev){const e=evNome(ev); return ['PORTA_MOTORISTA','PORTA_CARONA','PORTA_MOT_TEMPO','PORTA_CAR_TEMPO','PORTA_MOT_NAO_AUT','PORTA_CAR_NAO_AUT','PANICO','VELOCIDADE','RPM','PARADO_EXCEDIDO','DESENGATE'].indexOf(e)>=0;}
-function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(ehParada(ev,det)) return 'PARADA EXTRA'; if(e==='PARADA_REFEICAO'||/REFEICAO/.test(d)) return 'PARADA RF'; if(e==='LOCALIZACAO')return det||'LOCAL'; if(e==='ABERTURA_BAU'||e==='INICIO_DESCARREGAMENTO')return 'INÍCIO DE DESCARREGAMENTO';
-    if(e==='FECHAMENTO_BAU')return 'FECHAMENTO BAÚ';if(e==='REINICIO_VIAGEM')return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM'; if(e==='PORTA_MOTORISTA')return 'PORTA MOTORISTA'; if(e==='PORTA_CARONA')return 'PORTA CARONA'; if(e==='PORTA_MOT_TEMPO')return 'PORTA MOT. TEMPO'; if(e==='PORTA_CAR_TEMPO')return 'PORTA CAR. TEMPO'; if(e==='PORTA_MOT_NAO_AUT')return 'PORTA MOT. NÃO AUT.'; if(e==='PORTA_CAR_NAO_AUT')return 'PORTA CAR. NÃO AUT.'; if(e==='PANICO')return 'PÂNICO'; if(e==='VELOCIDADE')return 'VELOCIDADE'; if(e==='RPM')return 'RPM'; if(e==='PARADO_EXCEDIDO')return 'PARADO EXCEDIDO'; if(e==='DESENGATE')return 'DESENGATE'; return String(ev||'').replace(/_/g,' ');}
+function rotuloEv(ev,det){const e=evNome(ev);const d=String(det||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(ehParada(ev,det)) return 'PARADA EXTRA'; if(e==='PARADA_REFEICAO'||/REFEICAO/.test(d)) return 'PARADA RF'; if(e==='LOCALIZACAO')return det||'LOCAL'; if(e==='FECHAMENTO_BAU')return 'FECHAMENTO BAÚ';if(e==='REINICIO_VIAGEM')return 'REINÍCIO DE VIAGEM';if(e==='INICIO_VIAGEM')return 'INÍCIO DE VIAGEM'; if(e==='PORTA_MOTORISTA')return 'PORTA MOTORISTA'; if(e==='PORTA_CARONA')return 'PORTA CARONA'; if(e==='PORTA_MOT_TEMPO')return 'PORTA MOT. TEMPO'; if(e==='PORTA_CAR_TEMPO')return 'PORTA CAR. TEMPO'; if(e==='PORTA_MOT_NAO_AUT')return 'PORTA MOT. NÃO AUT.'; if(e==='PORTA_CAR_NAO_AUT')return 'PORTA CAR. NÃO AUT.'; if(e==='PANICO')return 'PÂNICO'; if(e==='VELOCIDADE')return 'VELOCIDADE'; if(e==='RPM')return 'RPM'; if(e==='PARADO_EXCEDIDO')return 'PARADO EXCEDIDO'; if(e==='DESENGATE')return 'DESENGATE'; return String(ev||'').replace(/_/g,' ');}
 function clsEv(ev){const e=evNome(ev); if(e==='PANICO')return 'e-fim'; if(operacional(e))return 'e-ret'; if(e.includes('BAU')||e.includes('DESCARREG'))return 'e-bau';if(e.includes('FIM'))return 'e-fim';if(e.includes('INICIO'))return 'e-ini';if(e.includes('RETORNO')||e.includes('REFEICAO'))return 'e-ret';return 'e-cli';}
 async function pull(url){
   const ctrl=new AbortController();
@@ -475,12 +469,12 @@ function pintar(){
     const iFim=lista.map((e,i)=>(e.ev==='FIM_VIAGEM'||e.ev==='FIM_FINAL')?i:-1).filter(i=>i>=0).pop();
     const iIni=lista.map((e,i)=>(e.ev==='INICIO_VIAGEM'||e.ev==='REINICIO_VIAGEM')?i:-1).filter(i=>i>=0).pop();
     const bauAtrasado=(last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO') && iFim>=0 && (iIni==null || iIni<iFim);
-    if(bauAtrasado) return;
-    // Sensor de baú sozinho não mantém a placa. Precisa de evento de viagem.
-    const tripEv=['INICIO_VIAGEM','REINICIO_VIAGEM','RETORNO','CHEGADA_CLIENTE','FIM_VIAGEM','FIM_FINAL','CV_FIM_LOJA','LS_FIM_MACRO','HT_FIM_CD','PARADA_EXTRA','PARADA_REFEICAO'];
+    // Mantém a placa se tiver evento de viagem ou baú recente
+    const tripEv=['INICIO_VIAGEM','REINICIO_VIAGEM','RETORNO','CHEGADA_CLIENTE','FIM_VIAGEM','FIM_FINAL','CV_FIM_LOJA','LS_FIM_MACRO','HT_FIM_CD','PARADA_EXTRA','PARADA_REFEICAO','ABERTURA_BAU','INICIO_DESCARREGAMENTO'];
     const lastTrip=lista.slice().reverse().find(e=>tripEv.indexOf(e.ev)>=0||ehFimLojaMacro(e.ev));
-    if(last.ev==='BAU_IGNORADO' || last.ev==='LOCALIZACAO') return;
-    if(!lastTrip && (last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO')) return;
+    const temEventoAtivo = lista.some(e => ['INICIO_VIAGEM','REINICIO_VIAGEM','ABERTURA_BAU','INICIO_DESCARREGAMENTO','CHEGADA_CLIENTE'].includes(e.ev) && eventoRecente(e.hora, 180));
+    if(!temEventoAtivo && (last.ev==='BAU_IGNORADO' || last.ev==='LOCALIZACAO')) return;
+    if(!lastTrip && !temEventoAtivo && (last.ev==='ABERTURA_BAU'||last.ev==='INICIO_DESCARREGAMENTO')) return;
     // LS/CV/HT: 1º FIM é fim de loja (continua). 2º FIM depois de RETORNO = chegou no CD.
     const op=String((mapaCtrl[pl]||{}).op||'').toUpperCase();
     const troca=opTrocaMacro(op);
@@ -492,7 +486,7 @@ function pintar(){
     if(fimAposRetorno) return;
     if(!troca && ultimoFim>=0) return;
     const vivo = evAberto.indexOf(last.ev)>=0 || ehFimLojaMacro(last.ev) || aindaNaRua(last.ev) || (lastTrip && !ehFimReal(lastTrip.ev)) || (troca && !fimAposRetorno);
-    if(!vivo) return;
+    if(!vivo && !temEventoAtivo) return;
     if(fimLojaTardio) last=Object.assign({}, last, {ev:'RETORNO',hora:(lista[iRet]||last).hora,det:(lista[iRet]||last).det||''});
     const jaFim=loadHist(DATA_ISO).some(h=>h.placa===pl && (h.hora||'')>=(last.hora||''));
     if(jaFim && destEhCd(destNow0)) return;
@@ -588,7 +582,7 @@ async function hashTxt(t){
   const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const CCO_VER='20261020c';
+const CCO_VER='20261020d';
 async function checarGithub(){
   try{
     const base=location.href.split('#')[0].split('?')[0];
