@@ -541,6 +541,7 @@ function pintar(){
   const ai = document.getElementById('alertasInfo');
   if(ai) ai.textContent = alertas ? alertas+' alerta(s) ativo(s)' : '';
   const todos=(CACHE.todos&&CACHE.todos.length?CACHE.todos:evs).filter(e => {
+    if(!e.hoje) return false;  // só sinais do dia atual no ticker
     if(e.ev==='BAU_IGNORADO') return false;
     if(e.ev==='LOCALIZACAO') return true;
     // Porta, pânico e demais operacionais aparecem em qualquer filtro.
