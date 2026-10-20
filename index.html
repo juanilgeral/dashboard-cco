@@ -273,12 +273,12 @@ async function carregar(){
       const det=String(r[3]||'');
       if(/INICIO|REINICIO|DESTINO|CD/i.test(det)){
         evs.push({ev:'RETORNO',placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
-        if(dia.indexOf(alvo)===0) sinaisHoje++;
+        if(dia.indexOf(alvo)===0 || (agoraBRT().getHours()<6 && dia.indexOf(ontem)===0)) sinaisHoje++;
       }
       continue;
     }
     var det=String(r[3]||''); var ev2=ev; if(/PARADA|BANHEIRO|EXTRAORD/i.test(ev+' '+det) && !/REFEICAO/i.test(ev)) ev2='PARADA_EXTRA'; evs.push({ev:ev2,placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
-    if(dia.indexOf(alvo)===0) sinaisHoje++;
+    if(dia.indexOf(alvo)===0 || (agoraBRT().getHours()<6 && dia.indexOf(ontem)===0)) sinaisHoje++;
   }
   CACHE.sinaisHoje = sinaisHoje;
   const h=(ctrl[0]||[]).map(x=>String(x).trim().toUpperCase().replace(/"/g,''));
@@ -544,7 +544,7 @@ function pintar(){
   }
 
   const kpis=document.getElementById('kpis');
-  var kpiHtml='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+(CACHE.sinaisHoje||0)+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
+  var kpiHtml='<div class="kpi"><div class="l">Sinais hoje</div><div class="n c-cyan">'+(CACHE.sinaisHoje!=null?CACHE.sinaisHoje:0)+'</div></div><div class="kpi"><div class="l">Em viagem / retorno</div><div class="n c-lime">'+viagem+'</div></div><div class="kpi"><div class="l">Na loja / baú</div><div class="n c-amber">'+loja+'</div></div><div class="kpi"><div class="l">Baú aberto</div><div class="n c-amber">'+bau+'</div></div><div class="kpi"><div class="l">Almoço</div><div class="n c-violet">'+alm+'</div></div><div class="kpi"><div class="l">Encerrados</div><div class="n c-red">'+fim+'</div></div>';
   if(kpis && kpis.dataset.sig!==kpiHtml){ kpis.dataset.sig=kpiHtml; kpis.innerHTML=kpiHtml; }
   const alertas = linhas.filter(l=>l.includes('alert-row')||l.includes('alert-bau')).length;
   const ai = document.getElementById('alertasInfo');
