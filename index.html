@@ -466,7 +466,9 @@ function pintar(){
   placas.forEach(pl=>{
     const lista=por[pl]||[]; if(!lista.length) return;
     const tripPrio=['INICIO_VIAGEM','REINICIO_VIAGEM','RETORNO','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','FIM_VIAGEM','FIM_FINAL','CV_FIM_LOJA','LS_FIM_MACRO','HT_FIM_CD'];
-    let last=(lista.slice().reverse().find(e=>tripPrio.indexOf(e.ev)>=0)||lista.slice().reverse().find(e=>!operacional(e.ev) && e.ev!=='BAU_IGNORADO' && e.ev!=='SEM_LANC' && e.ev!=='IGNORA_CD' && e.ev!=='LOCALIZACAO' && e.ev!=='FECHAMENTO_BAU')||{});
+    // Preferir o evento de baú mais recente se existir
+    const lastBau = lista.slice().reverse().find(e=>e.ev==='ABERTURA_BAU'||e.ev==='INICIO_DESCARREGAMENTO');
+    let last = lastBau || (lista.slice().reverse().find(e=>tripPrio.indexOf(e.ev)>=0)||lista.slice().reverse().find(e=>!operacional(e.ev) && e.ev!=='BAU_IGNORADO' && e.ev!=='SEM_LANC' && e.ev!=='IGNORA_CD' && e.ev!=='LOCALIZACAO' && e.ev!=='FECHAMENTO_BAU')||{});
     if(!last.ev) return;
     const destNow0=destPreferido(mapaCtrl[pl]||{},lista,last);
     const final=fimEhFinal((mapaCtrl[pl]||{}).op, destNow0, last.ev, lista);
