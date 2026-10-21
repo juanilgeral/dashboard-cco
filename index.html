@@ -129,6 +129,31 @@ function agoraBRT(){return new Date(new Date().toLocaleString('en-US',{timeZone:
 function isoOperacional(){const d=agoraBRT();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function isoOntem(){const d=agoraBRT();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function evNome(ev){return String(ev||'').toUpperCase().replace(/\s+/g,'_');}
+// Mapa de macros conhecidas (TrucksControl)
+const MACRO_MAP = {
+  'INICIO DE VIAGEM': 'INICIO_VIAGEM',
+  'INICIO DE VIAGEM CARREGADO': 'INICIO_VIAGEM',
+  'INICIO DE VIAGEM VAZIO': 'INICIO_VIAGEM',
+  'REINICIO DE VIAGEM': 'REINICIO_VIAGEM',
+  'FIM DE VIAGEM': 'FIM_VIAGEM',
+  'INICIO DE DESCARREGAMENTO': 'INICIO_DESCARREGAMENTO',
+  'TERMINO DE DESCARREGAMENTO': 'FIM_DESCARREGAMENTO',
+  'CHEGADA NO CLIENTE': 'CHEGADA_CLIENTE',
+  'CHEGADA NA FILIAL': 'CHEGADA_FILIAL',
+  'ABERTURA BAU': 'ABERTURA_BAU',
+  'ABERTURA DE BAU': 'ABERTURA_BAU',
+  'FECHAMENTO BAU': 'FECHAMENTO_BAU',
+  'PARADA PARA ALIMENTACAO': 'PARADA_REFEICAO',
+  'REFEICAO': 'PARADA_REFEICAO',
+  'PARADA EVENTUAL': 'PARADA_EXTRA',
+  'BANHEIRO': 'PARADA_EXTRA'
+};
+function normalizarMacro(ev){
+  const n = String(ev||'').toUpperCase().trim();
+  if(MACRO_MAP[n]) return MACRO_MAP[n];
+  // fallback: normaliza espaços
+  return n.replace(/\s+/g,'_');
+}
 function ehFimReal(ev){ev=evNome(ev);return ev==='FIM_VIAGEM'||ev==='FIM_FINAL'||ev.indexOf('FIM_CD')>=0||ev==='HT_FIM_CD'||ev.indexOf('FIM CD')>=0;}
 function ehFimLojaMacro(ev){ev=evNome(ev);return ev.indexOf('FIM_LOJA')>=0||ev.indexOf('FIM_MACRO')>=0||ev.indexOf('LS_FIM')>=0||ev.indexOf('CV_FIM_LOJA')>=0;}
 function aindaNaRua(ev){ev=evNome(ev); if(/PARADA|BANHEIRO|EXTRAORD/.test(ev)) return true; return ['INICIO_VIAGEM','REINICIO_VIAGEM','CHEGADA_CLIENTE','ABERTURA_BAU','INICIO_DESCARREGAMENTO','RETORNO','PARADA_REFEICAO'].includes(ev);}
@@ -292,7 +317,7 @@ async function carregar(){
       }
       continue;
     }
-    var det=String(r[3]||''); var ev2=ev; if(/PARADA|BANHEIRO|EXTRAORD/i.test(ev+' '+det) && !/REFEICAO/i.test(ev)) ev2='PARADA_EXTRA'; evs.push({ev:ev2,placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
+    var det=String(r[3]||''); var ev2=normalizarMacro(ev); if(/PARADA|BANHEIRO|EXTRAORD/i.test(ev+' '+det) && !/REFEICAO/i.test(ev)) ev2='PARADA_EXTRA'; evs.push({ev:ev2,placa:pl,hora:hh(r[3])||hh(r[0]),det:det,dia:dia.slice(0,10),hoje:dia.indexOf(alvo)===0,ts:dia});
     if(dia.includes(hojeDia+'/'+hojeMes) || dia.includes(alvo) || (agoraBRT().getHours()<8 && dia.includes(ontem.split('/')[0]+'/'+ontem.split('/')[1]))) sinaisHoje++;
   }
   CACHE.sinaisHoje = sinaisHoje;
